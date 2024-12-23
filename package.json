@@ -1,5 +1,5 @@
 {
-  "name": "@template/cli",
+  "name": "redis-effect",
   "version": "0.0.0",
   "type": "module",
   "packageManager": "pnpm@9.10.0",
@@ -31,6 +31,7 @@
     "@changesets/cli": "^2.27.8",
     "@effect/cli": "latest",
     "@effect/eslint-plugin": "^0.2.0",
+    "@effect/experimental": "^0.36.0",
     "@effect/language-service": "^0.1.0",
     "@effect/platform": "latest",
     "@effect/platform-node": "latest",
@@ -58,5 +59,8 @@
     "patchedDependencies": {
       "@changesets/get-github-info@0.6.0": "patches/@changesets__get-github-info@0.6.0.patch"
     }
+  },
+  "dependencies": {
+    "@effect/platform-bun": "^0.52.0"
   }
 }

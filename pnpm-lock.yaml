@@ -12,6 +12,10 @@ patchedDependencies:
 importers:
 
   .:
+    dependencies:
+      '@effect/platform-bun':
+        specifier: ^0.52.0
+        version: 0.52.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)
     devDependencies:
       '@changesets/changelog-github':
         specifier: ^0.5.0
@@ -25,6 +29,9 @@ importers:
       '@effect/eslint-plugin':
         specifier: ^0.2.0
         version: 0.2.0
+      '@effect/experimental':
+        specifier: ^0.36.0
+        version: 0.36.0(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0)
       '@effect/language-service':
         specifier: ^0.1.0
         version: 0.1.0
@@ -247,8 +254,33 @@ packages:
   '@effect/eslint-plugin@0.2.0':
     resolution: {integrity: sha512-PC/hEDGctYGYIjZyhM6kbD4FyHxLgoYNoQNjGkCXcFEzi71vQc3PJKe2JnCgzcUDvr/Nc2qgTVU4ONYwjHzQGA==}
 
+  '@effect/experimental@0.36.0':
+    resolution: {integrity: sha512-pVLnfotRb8LvRwnrx4vHjMyd52zIG+PSNBBkcS8DxccdA3Pm2kBDz1f3eGxOxOpyRPCB8afO712nCnWic82mMw==}
+    peerDependencies:
+      '@effect/platform': ^0.72.0
+      '@effect/platform-node': ^0.68.0
+      effect: ^3.12.0
+      ioredis: ^5
+      lmdb: ^3
+      ws: ^8
+    peerDependenciesMeta:
+      '@effect/platform-node':
+        optional: true
+      ioredis:
+        optional: true
+      lmdb:
+        optional: true
+      ws:
+        optional: true
+
   '@effect/language-service@0.1.0':
     resolution: {integrity: sha512-BnlM8LlaqCAYgdRfxlbR7gXGh/FD1scL1fPgNVJEPoOM08od1jtJz+iKhwfaud8TPnnhZR+TED2h5ynjanLeCQ==}
+
+  '@effect/platform-bun@0.52.0':
+    resolution: {integrity: sha512-sT2y6tiU090ztSf2a574oDNFy99BlqgIOEfds6XJPljqjcJeViP2y5iU3/fNi9+Yl+rnMtTOpFP8iFrUBB3oEA==}
+    peerDependencies:
+      '@effect/platform': ^0.72.0
+      effect: ^3.12.0
 
   '@effect/platform-node-shared@0.22.0':
     resolution: {integrity: sha512-v5syfSWbek/v5uqRweEjq1zwtl17FMaOeSIt1OZFzQd4GIclVOgM/8chNVtAmpkdQh7SaKNijFruO0VET54e6w==}
@@ -827,6 +859,36 @@ packages:
 
   '@manypkg/get-packages@1.1.3':
     resolution: {integrity: sha512-fo+QhuU3qE/2TQMQmbVMqaQ6EWbMhi4ABWP+O4AM1NqPBuy0OrApV5LO6BrrgnhtAHS2NH6RrVk9OL181tTi8A==}
+
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
+    resolution: {integrity: sha512-QZHtlVgbAdy2zAqNA9Gu1UpIuI8Xvsd1v8ic6B2pZmeFnFcMWiPLfWXh7TVw4eGEZ/C9TH281KwhVoeQUKbyjw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.3':
+    resolution: {integrity: sha512-mdzd3AVzYKuUmiWOQ8GNhl64/IoFGol569zNRdkLReh6LRLHOXxU4U8eq0JwaD8iFHdVGqSy4IjFL4reoWCDFw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.3':
+    resolution: {integrity: sha512-YxQL+ax0XqBJDZiKimS2XQaf+2wDGVa1enVRGzEvLLVFeqa5kx2bWbtcSXgsxjQB7nRqqIGFIcLteF/sHeVtQg==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.3':
+    resolution: {integrity: sha512-fg0uy/dG/nZEXfYilKoRe7yALaNmHoYeIoJuJ7KJ+YyU2bvY8vPv27f7UKhGRpY6euFYqEVhxCFZgAUNQBM3nw==}
+    cpu: [arm]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.3':
+    resolution: {integrity: sha512-cvwNfbP07pKUfq1uH+S6KJ7dT9K8WOE4ZiAcsrSes+UY55E/0jLYc+vq+DO7jlmqRb5zAggExKm0H7O/CBaesg==}
+    cpu: [x64]
+    os: [linux]
+
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
+    resolution: {integrity: sha512-x0fWaQtYp4E6sktbsdAqnehxDgEc/VwM7uLsRCYWaiGu0ykYdZPiS8zCWdnjHwyiumousxfBm4SO31eXqwEZhQ==}
+    cpu: [x64]
+    os: [win32]
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -1454,6 +1516,10 @@ packages:
     resolution: {integrity: sha512-pGjwhsmsp4kL2RTz08wcOlGN83otlqHeD/Z5T8GXZB+/YcpQ/dgo+lbU8ZsGxV0HIvqqxo9l7mqYwyYMD9bKDg==}
     engines: {node: '>=0.10'}
     hasBin: true
+
+  detect-libc@2.0.3:
+    resolution: {integrity: sha512-bwy0MGW55bG41VqxxypOsdSdGqLwXPI/focwgTYCFMbdUiBAxLg9CFzG08sz2aqzknwiX7Hkl0bQENjg8iLByw==}
+    engines: {node: '>=8'}
 
   diff-sequences@29.6.3:
     resolution: {integrity: sha512-EjePK1srD3P08o2j4f0ExnylqRs5B9tJjcp9t1krH2qRi8CCdsYfwe9JgSLurFBWwq4uOlipzfk5fHNvwFKr8Q==}
@@ -2206,6 +2272,13 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
+  msgpackr-extract@3.0.3:
+    resolution: {integrity: sha512-P0efT1C9jIdVRefqjzOQ9Xml57zpOXnIuS+csaB4MdZbTdmGDLo8XhzBG1N7aO11gKDDkJvBLULeFTo46wwreA==}
+    hasBin: true
+
+  msgpackr@1.11.2:
+    resolution: {integrity: sha512-F9UngXRlPyWCDEASDpTf6c9uNhGPTqnTeLVt7bN+bU1eajoR/8V9ys2BRaV5C/e5ihE6sJ9uPIKaYt6bFuO32g==}
+
   multipasta@0.2.5:
     resolution: {integrity: sha512-c8eMDb1WwZcE02WVjHoOmUVk7fnKU/RmUcosHACglrWAuPQsEJv+E8430sXj6jNc1jHw0zrS16aCjQh4BcEb4A==}
 
@@ -2234,6 +2307,10 @@ packages:
     peerDependenciesMeta:
       encoding:
         optional: true
+
+  node-gyp-build-optional-packages@5.2.2:
+    resolution: {integrity: sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==}
+    hasBin: true
 
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
@@ -3230,7 +3307,23 @@ snapshots:
       '@dprint/typescript': 0.91.8
       prettier-linter-helpers: 1.0.0
 
+  '@effect/experimental@0.36.0(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0)':
+    dependencies:
+      '@effect/platform': 0.72.0(effect@3.12.0)
+      effect: 3.12.0
+      msgpackr: 1.11.2
+    optionalDependencies:
+      '@effect/platform-node': 0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)
+      ws: 8.18.0
+
   '@effect/language-service@0.1.0': {}
+
+  '@effect/platform-bun@0.52.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)':
+    dependencies:
+      '@effect/platform': 0.72.0(effect@3.12.0)
+      '@effect/platform-node-shared': 0.22.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)
+      effect: 3.12.0
+      multipasta: 0.2.5
 
   '@effect/platform-node-shared@0.22.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)':
     dependencies:
@@ -3623,6 +3716,24 @@ snapshots:
       fs-extra: 8.1.0
       globby: 11.1.0
       read-yaml-file: 1.1.0
+
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.3':
+    optional: true
+
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3':
+    optional: true
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -4221,6 +4332,9 @@ snapshots:
   detect-indent@6.1.0: {}
 
   detect-libc@1.0.3: {}
+
+  detect-libc@2.0.3:
+    optional: true
 
   diff-sequences@29.6.3: {}
 
@@ -5147,6 +5261,22 @@ snapshots:
 
   ms@2.1.3: {}
 
+  msgpackr-extract@3.0.3:
+    dependencies:
+      node-gyp-build-optional-packages: 5.2.2
+    optionalDependencies:
+      '@msgpackr-extract/msgpackr-extract-darwin-arm64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-darwin-x64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-linux-arm': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-linux-arm64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.3
+      '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.3
+    optional: true
+
+  msgpackr@1.11.2:
+    optionalDependencies:
+      msgpackr-extract: 3.0.3
+
   multipasta@0.2.5: {}
 
   mz@2.7.0:
@@ -5166,6 +5296,11 @@ snapshots:
   node-fetch@2.7.0:
     dependencies:
       whatwg-url: 5.0.0
+
+  node-gyp-build-optional-packages@5.2.2:
+    dependencies:
+      detect-libc: 2.0.3
+    optional: true
 
   node-releases@2.0.19: {}
 
