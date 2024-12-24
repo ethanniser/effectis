@@ -146,27 +146,29 @@ export namespace RESP {
               // todo: error handle number parsing
               const nextValueLength = Match.value(nextItemType).pipe(
                 Match.when("*", () => {
-                  const rest = s.slice(2)
+                  const length = parseInt(s.at(1)!)
+                  const rest = s.slice(4)
                   const values: globalThis.Array<string> = []
                   let remainder = rest
-                  while (remainder.length > 0) {
+                  while (remainder.length > 0 && values.length < length) {
                     const result = getNextValue(remainder)
                     if (result === null) {
                       throw new globalThis.Error("Expected array to have length")
                     }
                     const [value, nextRemainder] = result
+
                     remainder = nextRemainder
                     values.push(value)
                   }
-                  return values.map((s) => s.length).reduce((a, b) => a + b, 0)
+                  const arrLength = values.map((s) => s.length).reduce((a, b) => a + b, 0) + 3 // the *_ length
+                  return arrLength
                 }),
-                Match.when("$", () => s.slice(4).indexOf("\r\n") + 4),
+                Match.when("$", () => s.slice(4).indexOf("\r\n") + 5),
                 Match.when(":", () => s.indexOf("\r\n") + 1),
-                Match.when("+", () => s.indexOf("\r\n") + 4),
-                Match.when("-", () => s.indexOf("\r\n") + 4),
+                Match.when("+", () => s.indexOf("\r\n") + 1),
+                Match.when("-", () => s.indexOf("\r\n") + 1),
                 Match.orElseAbsurd // this is a lie
               )
-              console.log(nextValueLength)
 
               return [s.slice(0, nextValueLength + 1), s.slice(nextValueLength + 1)] as const
             }
@@ -175,9 +177,7 @@ export namespace RESP {
             const values: globalThis.Array<string> = []
             let remainder = rawValues
             while (remainder.length > 0) {
-              console.log(remainder)
               const result = getNextValue(remainder)
-              console.log(result)
               if (result === null) {
                 throw new globalThis.Error("Expected array to have length")
               }

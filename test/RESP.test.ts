@@ -67,7 +67,7 @@ describe("RESP Parser", () => {
       expect(parsed).toEqual(new RESP.Array({ value: null }))
     }))
 
-  it.effect("should parse basic array", () =>
+  it.effect("should parse just int array", () =>
     Effect.gen(function*() {
       const input = "*3\r\n:1\r\n:2\r\n:3\r\n"
       const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input)
@@ -77,4 +77,37 @@ describe("RESP Parser", () => {
         })
       )
     }))
+
+  it.effect("should parse simple array", () =>
+    Effect.gen(function*() {
+      const input = "*4\r\n:1\r\n+OK\r\n-ERR\r\n$5\r\nHello\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input)
+      expect(parsed).toEqual(
+        new RESP.Array({
+          value: [
+            new RESP.Integer({ value: 1 }),
+            new RESP.SimpleString({ value: "OK" }),
+            new RESP.Error({ value: "ERR" }),
+            new RESP.BulkString({ value: "Hello" })
+          ]
+        })
+      )
+    }))
+
+  it.effect("should parse nested array", () =>
+    Effect.gen(function*() {
+      const input = "*3\r\n*2\r\n:1\r\n:2\r\n*2\r\n:3\r\n:4\r\n+HI\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input)
+      expect(parsed).toEqual(
+        new RESP.Array({
+          value: [
+            new RESP.Array({ value: [new RESP.Integer({ value: 1 }), new RESP.Integer({ value: 2 })] }),
+            new RESP.Array({ value: [new RESP.Integer({ value: 3 }), new RESP.Integer({ value: 4 })] }),
+            new RESP.SimpleString({ value: "HI" })
+          ]
+        })
+      )
+    }))
+
+  // todo: add tests for strings and arrays with multi digit and negative lengths
 })
