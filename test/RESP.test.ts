@@ -111,3 +111,90 @@ describe("RESP Parser", () => {
 
   // todo: add tests for strings and arrays with multi digit and negative lengths
 })
+
+describe("RESP Encoder", () => {
+  it.effect("should encode simple string", () =>
+    Effect.gen(function*() {
+      const input = new RESP.SimpleString({ value: "OK" })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual("+OK\r\n")
+    }))
+
+  it.effect("should encode error", () =>
+    Effect.gen(function*() {
+      const input = new RESP.Error({ value: "ERR" })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual("-ERR\r\n")
+    }))
+
+  it.effect("should encode integer", () =>
+    Effect.gen(function*() {
+      const input = new RESP.Integer({ value: 1 })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual(":1\r\n")
+    }))
+
+  it.effect("should encode bulk string", () =>
+    Effect.gen(function*() {
+      const input = new RESP.BulkString({ value: "Hello" })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual("$5\r\nHello\r\n")
+    }))
+
+  it.effect("should encode null bulk string", () =>
+    Effect.gen(function*() {
+      const input = new RESP.BulkString({ value: null })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual("$-1\r\n")
+    }))
+
+  it.effect("should encode empty array", () =>
+    Effect.gen(function*() {
+      const input = new RESP.Array({ value: [] })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual("*0\r\n")
+    }))
+
+  it.effect("should encode null array", () =>
+    Effect.gen(function*() {
+      const input = new RESP.Array({ value: null })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual("*-1\r\n")
+    }))
+
+  it.effect("should encode basic array", () =>
+    Effect.gen(function*() {
+      const input = new RESP.Array({
+        value: [new RESP.Integer({ value: 1 }), new RESP.Integer({ value: 2 }), new RESP.Integer({ value: 3 })]
+      })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual("*3\r\n:1\r\n:2\r\n:3\r\n")
+    }))
+
+  it.effect("should encode simple array", () =>
+    Effect.gen(function*() {
+      const input = new RESP.Array({
+        value: [
+          new RESP.Integer({ value: 1 }),
+          new RESP.SimpleString({ value: "OK" }),
+          new RESP.Error({ value: "ERR" }),
+          new RESP.BulkString({ value: "Hello" })
+        ]
+      })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual("*4\r\n:1\r\n+OK\r\n-ERR\r\n$5\r\nHello\r\n")
+    }))
+
+  it.effect("should encode nested array", () =>
+    Effect.gen(function*() {
+      const input = new RESP.Array({
+        value: [
+          new RESP.Array({ value: [new RESP.Integer({ value: 1 }), new RESP.Integer({ value: 2 })] }),
+          new RESP.Array({ value: [new RESP.Integer({ value: 3 }), new RESP.Integer({ value: 4 })] }),
+          new RESP.SimpleString({ value: "HI" })
+        ]
+      })
+      const encoded = yield* Schema.encode(RESP.ValueWireFormat)(input)
+      expect(encoded).toEqual("*3\r\n*2\r\n:1\r\n:2\r\n*2\r\n:3\r\n:4\r\n+HI\r\n")
+    }))
+})

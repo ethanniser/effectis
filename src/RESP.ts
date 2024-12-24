@@ -197,7 +197,7 @@ export namespace RESP {
         encode: (arr, _, ast) =>
           Effect.gen(function*() {
             if (arr === null) {
-              return "-1\r\n"
+              return "*-1\r\n"
             }
             const encodedValues = yield* Schema.encode(Schema.Array(Schema.suspend(() => ValueWireFormat)))(arr).pipe(
               Effect.catchTag("ParseError", () =>
