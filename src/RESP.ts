@@ -133,9 +133,7 @@ export namespace RESP {
               return []
             }
 
-            const rawValues = s.slice(2)
-            // calculate where to split the string to get the values
-            // const valuesBeginIndexes = [0]
+            const rawValues = s.slice(4)
 
             const getNextValue = (
               s: string
@@ -162,21 +160,24 @@ export namespace RESP {
                   }
                   return values.map((s) => s.length).reduce((a, b) => a + b, 0)
                 }),
-                Match.when("$", () => parseInt(s.at(1)!) + 2 + 4),
-                Match.when(":", () => parseInt(s.at(1)!) + 2 + 4),
-                Match.when("+", () => s.indexOf("\r\n") + 2),
-                Match.when("-", () => s.indexOf("\r\n") + 2),
+                Match.when("$", () => s.slice(4).indexOf("\r\n") + 4),
+                Match.when(":", () => s.indexOf("\r\n") + 1),
+                Match.when("+", () => s.indexOf("\r\n") + 4),
+                Match.when("-", () => s.indexOf("\r\n") + 4),
                 Match.orElseAbsurd // this is a lie
               )
+              console.log(nextValueLength)
 
-              return [s.slice(1, nextValueLength + 1), s.slice(nextValueLength + 1)] as const
+              return [s.slice(0, nextValueLength + 1), s.slice(nextValueLength + 1)] as const
             }
 
             // ? could this be functional?
             const values: globalThis.Array<string> = []
             let remainder = rawValues
             while (remainder.length > 0) {
+              console.log(remainder)
               const result = getNextValue(remainder)
+              console.log(result)
               if (result === null) {
                 throw new globalThis.Error("Expected array to have length")
               }

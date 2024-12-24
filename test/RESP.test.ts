@@ -66,4 +66,15 @@ describe("RESP Parser", () => {
       const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input)
       expect(parsed).toEqual(new RESP.Array({ value: null }))
     }))
+
+  it.effect("should parse basic array", () =>
+    Effect.gen(function*() {
+      const input = "*3\r\n:1\r\n:2\r\n:3\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input)
+      expect(parsed).toEqual(
+        new RESP.Array({
+          value: [new RESP.Integer({ value: 1 }), new RESP.Integer({ value: 2 }), new RESP.Integer({ value: 3 })]
+        })
+      )
+    }))
 })
