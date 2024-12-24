@@ -12,9 +12,10 @@ export const main = Effect.gen(function*() {
 
 const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.Socket) {
   yield* Effect.log("New connection")
-  const channel = Socket.toChannel(socket)
-  // @ts-expect-error
-  const rawInputStream = Channel.toStream(channel) as Stream.Stream<Uint8Array>
+  const channel = Socket.toChannel<never>(socket)
+  const rawInputStream = Stream.never.pipe(
+    Stream.pipeThroughChannel(channel)
+  )
   const rawOutputSink = Channel.toSink(channel)
   yield* pipe(
     rawInputStream,
@@ -23,7 +24,7 @@ const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.
   )
 }, Effect.onExit(() => Effect.log("Connection closed")))
 
-const processStream = (input: Stream.Stream<Uint8Array>) =>
+const processStream = (input: Stream.Stream<Uint8Array, Socket.SocketError>) =>
   pipe(
     input,
     Stream.decodeText()
