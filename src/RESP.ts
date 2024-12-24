@@ -1,7 +1,7 @@
 import { Effect, Match, ParseResult, Schema } from "effect"
 
 export namespace RESP {
-  class SimpleString extends Schema.TaggedClass<SimpleString>("SimpleString")("SimpleString", {
+  export class SimpleString extends Schema.TaggedClass<SimpleString>("SimpleString")("SimpleString", {
     value: Schema.String
   }) {
     static readonly WireFormat = Schema.String.pipe(
@@ -18,7 +18,7 @@ export namespace RESP {
     )
   }
 
-  class Error extends Schema.TaggedClass<Error>("Error")("Error", {
+  export class Error extends Schema.TaggedClass<Error>("Error")("Error", {
     value: Schema.String
   }) {
     static readonly WireFormat = Schema.String.pipe(
@@ -35,7 +35,7 @@ export namespace RESP {
     )
   }
 
-  class Integer extends Schema.TaggedClass<Integer>("Integer")("Integer", {
+  export class Integer extends Schema.TaggedClass<Integer>("Integer")("Integer", {
     value: Schema.Int
   }) {
     static readonly WireFormat = Schema.String.pipe(
@@ -64,7 +64,7 @@ export namespace RESP {
     )
   }
 
-  class BulkString extends Schema.TaggedClass<BulkString>("BulkString")("BulkString", {
+  export class BulkString extends Schema.TaggedClass<BulkString>("BulkString")("BulkString", {
     value: Schema.NullOr(Schema.String)
   }) {
     static readonly WireFormat = Schema.String.pipe(
@@ -77,12 +77,21 @@ export namespace RESP {
             if (rawLen === undefined) {
               return yield* Effect.fail(new ParseResult.Type(ast, s, "Expected bulk string to have length"))
             }
+
+            if (rawLen === "-") {
+              const nextChar = s.at(2)
+              if (nextChar === undefined || nextChar !== "1") {
+                return yield* Effect.fail(new ParseResult.Type(ast, s, "Expected null bulk string"))
+              }
+              return null
+            }
+
             const len = parseInt(rawLen)
             if (Number.isNaN(len)) {
               yield* Effect.fail(new ParseResult.Type(ast, s, "Expected integer"))
             }
 
-            return len === -1 ? null : s.slice(2, 2 + len)
+            return s.slice(4, -2)
           }),
         encode: (s) => Effect.succeed(s === null ? "$-1\r\n" : `$${s.length}\r\n${s}\r\n`)
       }),
@@ -95,7 +104,7 @@ export namespace RESP {
 
   const ArraySuspended = Schema.suspend((): Schema.Schema<Array> => Array)
 
-  class Array extends Schema.TaggedClass<Array>("Array")("Array", {
+  export class Array extends Schema.TaggedClass<Array>("Array")("Array", {
     value: Schema.NullOr(Schema.Array(Schema.suspend(() => Value)))
   }) {
     static readonly WireFormat = Schema.String.pipe(
@@ -108,14 +117,18 @@ export namespace RESP {
             if (rawLen === undefined) {
               return yield* Effect.fail(new ParseResult.Type(ast, s, "Expected array to have length"))
             }
+            if (rawLen === "-") {
+              const nextChar = s.at(2)
+              if (nextChar === undefined || nextChar !== "1") {
+                return yield* Effect.fail(new ParseResult.Type(ast, s, "Expected null bulk string"))
+              }
+              return null
+            }
             const len = parseInt(rawLen)
             if (Number.isNaN(len)) {
               yield* Effect.fail(new ParseResult.Type(ast, s, "Expected integer"))
             }
 
-            if (len === -1) {
-              return null
-            }
             if (len === 0) {
               return []
             }
@@ -199,7 +212,7 @@ export namespace RESP {
     )
   }
 
-  const Value = Schema.Union(
+  export const Value = Schema.Union(
     SimpleString,
     Error,
     Integer,
@@ -207,7 +220,7 @@ export namespace RESP {
     ArraySuspended
   )
 
-  const ValueWireFormat: Schema.Schema<typeof Value.Type, string> = Schema.Union(
+  export const ValueWireFormat: Schema.Schema<typeof Value.Type, string> = Schema.Union(
     SimpleString.WireFormat,
     Error.WireFormat,
     Integer.WireFormat,
