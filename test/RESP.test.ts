@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Effect, Schema } from "effect"
+import { Effect, Either, Schema } from "effect"
 import { RESP } from "../src/RESP.js"
 
 describe("RESP Parser", () => {
@@ -109,8 +109,106 @@ describe("RESP Parser", () => {
       )
     }))
 
-  // todo: add tests for strings and arrays with multi digit and negative lengths
+  it.effect("should parse a bulk string with a multi digit length", () =>
+    Effect.gen(function*() {
+      const input = "$12\r\n123456789012\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input)
+      expect(parsed).toEqual(new RESP.BulkString({ value: "123456789012" }))
+    }))
+
+  it.effect("should parse an array with a multi digit length", () =>
+    Effect.gen(function*() {
+      const input = "*12\r\n:1\r\n:2\r\n:3\r\n:4\r\n:5\r\n:6\r\n:7\r\n:8\r\n:9\r\n:10\r\n:11\r\n:12\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input)
+      expect(parsed).toEqual(
+        new RESP.Array({
+          value: [
+            new RESP.Integer({ value: 1 }),
+            new RESP.Integer({ value: 2 }),
+            new RESP.Integer({ value: 3 }),
+            new RESP.Integer({ value: 4 }),
+            new RESP.Integer({ value: 5 }),
+            new RESP.Integer({ value: 6 }),
+            new RESP.Integer({ value: 7 }),
+            new RESP.Integer({ value: 8 }),
+            new RESP.Integer({ value: 9 }),
+            new RESP.Integer({ value: 10 }),
+            new RESP.Integer({ value: 11 }),
+            new RESP.Integer({ value: 12 })
+          ]
+        })
+      )
+    }))
+
+  it.effect("should parse a nested array with a multi digit length", () =>
+    Effect.gen(function*() {
+      const input =
+        "*13\r\n:1\r\n:2\r\n:3\r\n:4\r\n:5\r\n:6\r\n:7\r\n:8\r\n:9\r\n:10\r\n:11\r\n:12\r\n*12\r\n:1\r\n:2\r\n:3\r\n:4\r\n:5\r\n:6\r\n:7\r\n:8\r\n:9\r\n:10\r\n:11\r\n:12\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input)
+      expect(parsed).toEqual(
+        new RESP.Array({
+          value: [
+            new RESP.Integer({ value: 1 }),
+            new RESP.Integer({ value: 2 }),
+            new RESP.Integer({ value: 3 }),
+            new RESP.Integer({ value: 4 }),
+            new RESP.Integer({ value: 5 }),
+            new RESP.Integer({ value: 6 }),
+            new RESP.Integer({ value: 7 }),
+            new RESP.Integer({ value: 8 }),
+            new RESP.Integer({ value: 9 }),
+            new RESP.Integer({ value: 10 }),
+            new RESP.Integer({ value: 11 }),
+            new RESP.Integer({ value: 12 }),
+            new RESP.Array({
+              value: [
+                new RESP.Integer({ value: 1 }),
+                new RESP.Integer({ value: 2 }),
+                new RESP.Integer({ value: 3 }),
+                new RESP.Integer({ value: 4 }),
+                new RESP.Integer({ value: 5 }),
+                new RESP.Integer({ value: 6 }),
+                new RESP.Integer({ value: 7 }),
+                new RESP.Integer({ value: 8 }),
+                new RESP.Integer({ value: 9 }),
+                new RESP.Integer({ value: 10 }),
+                new RESP.Integer({ value: 11 }),
+                new RESP.Integer({ value: 12 })
+              ]
+            })
+          ]
+        })
+      )
+    }))
+
+  it.effect("should fail when a bulk string has a negative length (thats not -1)", () =>
+    Effect.gen(function*() {
+      const input = "$-3\r\nHello\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
+      expect(Either.isLeft(parsed)).toBe(true)
+    }))
 })
+
+it.effect("should fail when an array has a negative length (thats not -1)", () =>
+  Effect.gen(function*() {
+    const input = "*-2\r\n:1\r\n"
+    const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
+    expect(Either.isLeft(parsed)).toBe(true)
+  }))
+
+it.effect("should fail when a bulk string has the wrong length", () =>
+  Effect.gen(function*() {
+    const input = "$3\r\nHello\r\n"
+    const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
+    expect(Either.isLeft(parsed)).toBe(true)
+  }))
+
+it.effect("should fail when an array has the wrong length", () =>
+  Effect.gen(function*() {
+    const input = "*3\r\n:1\r\n"
+    const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
+    expect(Either.isLeft(parsed)).toBe(true)
+  }))
 
 describe("RESP Encoder", () => {
   it.effect("should encode simple string", () =>

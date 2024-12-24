@@ -73,25 +73,31 @@ export namespace RESP {
       Schema.transformOrFail(Schema.NullOr(Schema.String), {
         decode: (s, _, ast) =>
           Effect.gen(function*() {
-            const rawLen = s.at(1)
+            const lengthOfLength = s.indexOf("\r\n") - 1
+            const rawLen = s.slice(1, lengthOfLength + 1)
+
             if (rawLen === undefined) {
               return yield* Effect.fail(new ParseResult.Type(ast, s, "Expected bulk string to have length"))
             }
 
-            if (rawLen === "-") {
-              const nextChar = s.at(2)
-              if (nextChar === undefined || nextChar !== "1") {
-                return yield* Effect.fail(new ParseResult.Type(ast, s, "Expected null bulk string"))
-              }
+            const len = parseInt(rawLen)
+
+            if (len === -1) {
               return null
+            } else if (len < 0) {
+              yield* Effect.fail(new ParseResult.Type(ast, s, "Expected positive integer for length"))
             }
 
-            const len = parseInt(rawLen)
             if (Number.isNaN(len)) {
               yield* Effect.fail(new ParseResult.Type(ast, s, "Expected integer"))
             }
 
-            return s.slice(4, -2)
+            const restOfString = s.slice(3 + lengthOfLength, -2)
+            if (restOfString.length !== len) {
+              yield* Effect.fail(new ParseResult.Type(ast, s, `Expected string to have length ${len}`))
+            }
+
+            return restOfString
           }),
         encode: (s) => Effect.succeed(s === null ? "$-1\r\n" : `$${s.length}\r\n${s}\r\n`)
       }),
@@ -113,27 +119,25 @@ export namespace RESP {
       Schema.transformOrFail(Schema.NullOr(Schema.Array(Schema.suspend(() => Value))), {
         decode: (s, _, ast) =>
           Effect.gen(function*() {
-            const rawLen = s.at(1)
+            const lengthOfLength = s.indexOf("\r\n") - 1
+            const rawLen = s.slice(1, lengthOfLength + 1)
             if (rawLen === undefined) {
               return yield* Effect.fail(new ParseResult.Type(ast, s, "Expected array to have length"))
             }
-            if (rawLen === "-") {
-              const nextChar = s.at(2)
-              if (nextChar === undefined || nextChar !== "1") {
-                return yield* Effect.fail(new ParseResult.Type(ast, s, "Expected null bulk string"))
-              }
-              return null
-            }
+
             const len = parseInt(rawLen)
             if (Number.isNaN(len)) {
-              yield* Effect.fail(new ParseResult.Type(ast, s, "Expected integer"))
+              yield* Effect.fail(new ParseResult.Type(ast, s, "Expected integer for length"))
             }
-
             if (len === 0) {
               return []
+            } else if (len === -1) {
+              return null
+            } else if (len < 0) {
+              yield* Effect.fail(new ParseResult.Type(ast, s, "Expected positive integer for length"))
             }
 
-            const rawValues = s.slice(4)
+            const rawValues = s.slice(3 + lengthOfLength)
 
             const getNextValue = (
               s: string
@@ -146,8 +150,11 @@ export namespace RESP {
               // todo: error handle number parsing
               const nextValueLength = Match.value(nextItemType).pipe(
                 Match.when("*", () => {
-                  const length = parseInt(s.at(1)!)
-                  const rest = s.slice(4)
+                  const lengthOfLength = s.indexOf("\r\n") - 1
+                  const rawLen = s.slice(1, lengthOfLength + 1)
+                  const length = parseInt(rawLen)
+                  const rest = s.slice(3 + lengthOfLength)
+
                   const values: globalThis.Array<string> = []
                   let remainder = rest
                   while (remainder.length > 0 && values.length < length) {
@@ -160,10 +167,10 @@ export namespace RESP {
                     remainder = nextRemainder
                     values.push(value)
                   }
-                  const arrLength = values.map((s) => s.length).reduce((a, b) => a + b, 0) + 3 // the *_ length
+                  const arrLength = values.map((s) => s.length).reduce((a, b) => a + b, 0) + lengthOfLength + 2 // the *_ length
                   return arrLength
                 }),
-                Match.when("$", () => s.slice(4).indexOf("\r\n") + 5),
+                Match.when("$", () => s.slice(3 + lengthOfLength).indexOf("\r\n") + 5),
                 Match.when(":", () => s.indexOf("\r\n") + 1),
                 Match.when("+", () => s.indexOf("\r\n") + 1),
                 Match.when("-", () => s.indexOf("\r\n") + 1),
@@ -185,6 +192,11 @@ export namespace RESP {
               remainder = nextRemainder
               values.push(value)
             }
+
+            if (values.length !== len) {
+              yield* Effect.fail(new ParseResult.Type(ast, s, `Expected array to have length ${len}`))
+            }
+
             const decodedValues = yield* Schema.decode(Schema.Array(Schema.suspend(() => ValueWireFormat)))(values)
               .pipe(
                 Effect.catchTag(
