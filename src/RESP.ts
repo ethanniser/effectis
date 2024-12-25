@@ -233,6 +233,8 @@ export namespace RESP {
     ArraySuspended
   )
 
+  export type Value = Schema.Schema.Type<typeof Value>
+
   export const ValueWireFormat: Schema.Schema<typeof Value.Type, string> = Schema.Union(
     SimpleString.WireFormat,
     Error.WireFormat,

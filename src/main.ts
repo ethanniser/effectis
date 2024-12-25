@@ -1,3 +1,4 @@
+import type * as Command from "@effect/cli/Command"
 import * as SocketServer from "@effect/experimental/SocketServer"
 import { Socket } from "@effect/platform"
 import { Channel, Effect, Either, identity, Option, pipe, Schema, Stream } from "effect"
@@ -17,20 +18,22 @@ const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.
   const rawInputStream = Stream.never.pipe(
     Stream.pipeThroughChannel(channel)
   )
-  // const rawOutputSink = Channel.toSink(channel)
+  const rawOutputSink = Channel.toSink(channel)
   yield* pipe(
     rawInputStream,
-    processStream,
-    Stream.tap(Effect.log),
-    Stream.runDrain
-    // Stream.run(rawOutputSink)
+    decodeFromWireFormat,
+    parseCommands,
+    Stream.mapEffect(runCommand),
+    encodeToWireFormat,
+    Stream.run(rawOutputSink)
   )
 }, Effect.onExit(() => Effect.log("Connection closed")))
 
-const processStream = (input: Stream.Stream<Uint8Array, Socket.SocketError>) =>
+const decodeFromWireFormat = (
+  input: Stream.Stream<Uint8Array, Socket.SocketError>
+): Stream.Stream<RESP.Value, unknown> =>
   pipe(
     input,
-    // decode to message format
     Stream.decodeText(),
     Stream.mapAccumEffect("", (buffer, nextChunk) =>
       Effect.gen(function*() {
@@ -43,6 +46,15 @@ const processStream = (input: Stream.Stream<Uint8Array, Socket.SocketError>) =>
         }
       })),
     Stream.filterMap(identity)
-    // process message
-    // encode to message format
+  )
+
+interface Command {}
+
+declare const parseCommands: (input: Stream.Stream<RESP.Value, unknown>) => Stream.Stream<Command, unknown>
+declare const runCommand: (input: Command) => Effect.Effect<RESP.Value, unknown>
+const encodeToWireFormat = (input: Stream.Stream<RESP.Value, unknown>): Stream.Stream<Uint8Array, unknown> =>
+  pipe(
+    input,
+    Stream.mapEffect((respValue) => Schema.encode(RESP.ValueWireFormat)(respValue)),
+    Stream.encodeText
   )
