@@ -5,8 +5,10 @@ import * as NodeContext from "@effect/platform-node/NodeContext"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as Effect from "effect/Effect"
 import { run } from "./Cli.js"
+import { BasicLive } from "./Storage.js"
 
 run(process.argv).pipe(
+  Effect.provide(BasicLive),
   Effect.provide(NodeSocketServer.layer({ port: 6379 })),
   Effect.provide(NodeContext.layer),
   NodeRuntime.runMain()
