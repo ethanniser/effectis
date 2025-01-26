@@ -25,7 +25,8 @@ export const layer = Layer.effect(
               }
             }
           }
-        })
+        }),
+      generateSnapshot: Effect.never
     }
   })
 )
