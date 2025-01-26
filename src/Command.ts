@@ -3,7 +3,7 @@ import { Schema } from "effect"
 // commands schould be serializable for WAL purposes
 // some way to distinguish write vs read commands (only write commands should be replayed)
 
-namespace Commands {
+export namespace Commands {
   export class Set extends Schema.TaggedClass<Set>("Set")("Set", {
     key: Schema.String,
     value: Schema.String
