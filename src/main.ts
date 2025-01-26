@@ -3,7 +3,6 @@ import { Socket } from "@effect/platform"
 import { Channel, Effect, Either, identity, Option, pipe, Schema, Stream } from "effect"
 import type { Command } from "./Command.js"
 import { RESP } from "./RESP.js"
-import { RIMR } from "./RIMR.js"
 import { Storage } from "./Storage.js"
 
 type RedisEffectError = unknown
@@ -61,7 +60,7 @@ const runCommand = (input: Command): Effect.Effect<RESP.Value, RedisEffectError,
   Effect.gen(function*() {
     const storage = yield* Storage
     const result = yield* storage.run(input)
-    return yield* Schema.encode(RIMR.RIMRToRESP)(result)
+    return result
   })
 
 const encodeToWireFormat = (
