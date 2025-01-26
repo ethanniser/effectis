@@ -1,8 +1,10 @@
-import type * as Command from "@effect/cli/Command"
 import * as SocketServer from "@effect/experimental/SocketServer"
 import { Socket } from "@effect/platform"
 import { Channel, Effect, Either, identity, Option, pipe, Schema, Stream } from "effect"
+import type { Command } from "./Command.js"
 import { RESP } from "./RESP.js"
+
+type RedisEffectError = unknown
 
 export const main = Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
@@ -31,7 +33,7 @@ const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.
 
 const decodeFromWireFormat = (
   input: Stream.Stream<Uint8Array, Socket.SocketError>
-): Stream.Stream<RESP.Value, unknown> =>
+): Stream.Stream<RESP.Value, RedisEffectError> =>
   pipe(
     input,
     Stream.decodeText(),
@@ -48,11 +50,15 @@ const decodeFromWireFormat = (
     Stream.filterMap(identity)
   )
 
-interface Command {}
+declare const parseCommands: (
+  input: Stream.Stream<RESP.Value, RedisEffectError>
+) => Stream.Stream<Command, RedisEffectError>
 
-declare const parseCommands: (input: Stream.Stream<RESP.Value, unknown>) => Stream.Stream<Command, unknown>
-declare const runCommand: (input: Command) => Effect.Effect<RESP.Value, unknown>
-const encodeToWireFormat = (input: Stream.Stream<RESP.Value, unknown>): Stream.Stream<Uint8Array, unknown> =>
+declare const runCommand: (input: Command) => Effect.Effect<RESP.Value, RedisEffectError>
+
+const encodeToWireFormat = (
+  input: Stream.Stream<RESP.Value, RedisEffectError>
+): Stream.Stream<Uint8Array, RedisEffectError> =>
   pipe(
     input,
     Stream.mapEffect((respValue) => Schema.encode(RESP.ValueWireFormat)(respValue)),
