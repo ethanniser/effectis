@@ -1,6 +1,7 @@
 // RIMR: Redis In-Memory Representation
 
 import { Schema } from "effect"
+import { RESP } from "./RESP.js"
 
 export namespace RIMR {
   export class String extends Schema.TaggedClass<String>("String")("String", {
@@ -17,4 +18,13 @@ export namespace RIMR {
 
   export const Value = Schema.Union(String)
   export type Value = Schema.Schema.Type<typeof Value>
+
+  export const RIMRToRESP = Schema.transform(RESP.Value, Value, {
+    encode: () => {
+      throw new Error("Not implemented")
+    },
+    decode: () => {
+      throw new Error("Not implemented")
+    }
+  })
 }

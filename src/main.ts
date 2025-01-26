@@ -3,8 +3,11 @@ import { Socket } from "@effect/platform"
 import { Channel, Effect, Either, identity, Option, pipe, Schema, Stream } from "effect"
 import type { Command } from "./Command.js"
 import { RESP } from "./RESP.js"
+import { RIMR } from "./RIMR.js"
+import { Storage } from "./Storage.js"
 
 type RedisEffectError = unknown
+type RedisServices = Storage
 
 export const main = Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
@@ -32,8 +35,8 @@ const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.
 }, Effect.onExit(() => Effect.log("Connection closed")))
 
 const decodeFromWireFormat = (
-  input: Stream.Stream<Uint8Array, Socket.SocketError>
-): Stream.Stream<RESP.Value, RedisEffectError> =>
+  input: Stream.Stream<Uint8Array, Socket.SocketError, RedisServices>
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
   pipe(
     input,
     Stream.decodeText(),
@@ -51,14 +54,19 @@ const decodeFromWireFormat = (
   )
 
 declare const parseCommands: (
-  input: Stream.Stream<RESP.Value, RedisEffectError>
-) => Stream.Stream<Command, RedisEffectError>
+  input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
+) => Stream.Stream<Command, RedisEffectError, RedisServices>
 
-declare const runCommand: (input: Command) => Effect.Effect<RESP.Value, RedisEffectError>
+const runCommand = (input: Command): Effect.Effect<RESP.Value, RedisEffectError, RedisServices> =>
+  Effect.gen(function*() {
+    const storage = yield* Storage
+    const result = yield* storage.run(input)
+    return yield* Schema.encode(RIMR.RIMRToRESP)(result)
+  })
 
 const encodeToWireFormat = (
-  input: Stream.Stream<RESP.Value, RedisEffectError>
-): Stream.Stream<Uint8Array, RedisEffectError> =>
+  input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
+): Stream.Stream<Uint8Array, RedisEffectError, RedisServices> =>
   pipe(
     input,
     Stream.mapEffect((respValue) => Schema.encode(RESP.ValueWireFormat)(respValue)),
