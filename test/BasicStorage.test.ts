@@ -2,9 +2,9 @@ import { describe, expect, it } from "@effect/vitest"
 import { Chunk, Effect, pipe, Stream } from "effect"
 import { processRESP } from "../src/main.js"
 import { RESP } from "../src/RESP.js"
-import { BasicLive } from "../src/Storage.js"
+import * as BasicStorage from "../src/Storage/BasicInMemory.js"
 
-const TestServices = BasicLive
+const TestServices = BasicStorage.layer
 
 describe("Basic Storage", () => {
   it.effect(
