@@ -1,12 +1,13 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Chunk, Effect, pipe, Stream } from "effect"
+import { Chunk, Effect, pipe, Schema, Stream } from "effect"
+import { CommandFromRESP, Commands } from "../src/Command.js"
 import { processRESP } from "../src/main.js"
 import { RESP } from "../src/RESP.js"
 import * as BasicStorage from "../src/Storage/BasicInMemory.js"
 
 const TestServices = BasicStorage.layer
 
-const runInput = (input: RESP.Array) =>
+const runInput = (input: RESP.Value) =>
   pipe(
     Stream.make(input),
     processRESP,
@@ -18,13 +19,7 @@ describe("Storage", () => {
     "SET",
     () =>
       Effect.gen(function*() {
-        const input = new RESP.Array({
-          value: [
-            new RESP.SimpleString({ value: "SET" }),
-            new RESP.BulkString({ value: "key" }),
-            new RESP.BulkString({ value: "value" })
-          ]
-        })
+        const input = yield* Schema.encode(CommandFromRESP)(new Commands.Set({ key: "key", value: "value" }))
         const result = yield* runInput(input)
         expect(result).toEqual(Chunk.make(new RESP.SimpleString({ value: "OK" })))
       }).pipe(Effect.provide(TestServices))
@@ -33,21 +28,10 @@ describe("Storage", () => {
     "SET and GET",
     () =>
       Effect.gen(function*() {
-        const input1 = new RESP.Array({
-          value: [
-            new RESP.SimpleString({ value: "SET" }),
-            new RESP.BulkString({ value: "key" }),
-            new RESP.BulkString({ value: "value" })
-          ]
-        })
+        const input1 = yield* Schema.encode(CommandFromRESP)(new Commands.Set({ key: "key", value: "value" }))
         yield* runInput(input1)
 
-        const input2 = new RESP.Array({
-          value: [
-            new RESP.SimpleString({ value: "GET" }),
-            new RESP.BulkString({ value: "key" })
-          ]
-        })
+        const input2 = yield* Schema.encode(CommandFromRESP)(new Commands.Get({ key: "key" }))
         const result = yield* runInput(input2)
         expect(result).toEqual(Chunk.make(new RESP.BulkString({ value: "value" })))
       }).pipe(Effect.provide(TestServices))
