@@ -66,19 +66,18 @@ export const LogToAppendOnlyFileLive = (
     })
   )
 
-export const withLogPersistence = (
-  storage: Layer.Layer<Storage>,
-  logPersistence: Layer.Layer<LogPersistence>
-): Layer.Layer<Storage> =>
-  Layer.map(Layer.merge(storage, logPersistence), (oldCtx) => {
-    const oldStorage = Context.get(oldCtx, Storage)
-    const logPersistence = Context.get(oldCtx, LogPersistence)
+export const withLogPersistence = Layer.effect(
+  Storage,
+  Effect.gen(function*() {
+    const oldStorage = yield* Storage
+    const logPersistence = yield* LogPersistence
     const newStorage = Storage.of({
       ...oldStorage,
       run: (command) => oldStorage.run(command).pipe(Effect.zipLeft(logPersistence.drain.offer(command)))
     })
-    return Context.make(Storage, newStorage)
+    return newStorage
   })
+)
 
 export interface SnapshotPersistenceImpl {
   storeSnapshot: (snapshot: Uint8Array) => Effect.Effect<void, unknown>
