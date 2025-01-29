@@ -1,47 +1,30 @@
 import * as NodeSocketServer from "@effect/experimental/SocketServer/Node"
 import { NodeContext } from "@effect/platform-node"
-import { beforeEach, describe, expect, it } from "@effect/vitest"
-import { Effect, FiberHandle, Layer, ManagedRuntime, pipe, Scope } from "effect"
+import { expect, layer } from "@effect/vitest"
+import { Effect, Layer, Logger, pipe } from "effect"
+import { createClient } from "redis"
 import { main } from "../src/main.js"
 import * as BasicStorage from "../src/Storage/BasicInMemory.js"
 
-const rt = ManagedRuntime.make(Layer.empty)
+const mainLive = Layer.scopedDiscard(Effect.forkScoped(main))
 
-const scope = rt.runSync(Scope.make())
-const currenServerFiber = rt.runSync(FiberHandle.make().pipe(Scope.extend(scope)))
-
-const startTestServer = pipe(
-  Effect.log("Starting test server"),
-  Effect.onInterrupt(() => Effect.log("Interrupted")),
-  Effect.zipLeft(main),
-  //   main,
-  Effect.provide(BasicStorage.layer),
-  Effect.provide(NodeSocketServer.layer({ port: 6379 })),
-  Effect.provide(NodeContext.layer)
+const sharedServices = pipe(
+  mainLive,
+  Layer.provideMerge(
+    Layer.mergeAll(
+      BasicStorage.layer,
+      NodeSocketServer.layer({ port: 0 }),
+      NodeContext.layer
+    )
+  ),
+  // by default the logger is removed from the test context
+  Layer.provide(Logger.replace(Logger.defaultLogger, Logger.prettyLoggerDefault))
 )
 
-beforeEach(async () => {
-  console.log("beforeEach")
-  await pipe(
-    Effect.log("hi"),
-    Effect.zipLeft(FiberHandle.run(currenServerFiber, startTestServer)),
-    rt.runPromise
-  )
-})
-
-describe("e2e", () => {
-  it.effect(
-    "test",
-    () =>
-      Effect.gen(function*() {
-        expect(true).toBe(true)
-      })
-  )
-  it.effect(
-    "test2",
-    () =>
-      Effect.gen(function*() {
-        expect(true).toBe(true)
-      })
-  )
+layer(sharedServices)("e2e", (it) => {
+  it.effect("test 1", () =>
+    Effect.gen(function*() {
+      const client = yield* Effect.tryPromise(() => createClient().connect())
+      expect(true).toBe(true)
+    }))
 })
