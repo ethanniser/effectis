@@ -1,5 +1,5 @@
 import { FileSystem } from "@effect/platform"
-import { Context, Effect, Layer, pipe, Queue, Schedule, Schema } from "effect"
+import { Context, DateTime, Effect, Layer, pipe, Queue, Schedule, Schema } from "effect"
 import type { Command } from "./Command.js"
 import type { RESP } from "./RESP.js"
 
@@ -87,14 +87,39 @@ export class SnapshotPersistence
   extends Context.Tag("SnapshotPersistence")<SnapshotPersistence, SnapshotPersistenceImpl>()
 {}
 
-export const FileSnapshotPersistenceLive = (fileName: string) =>
+export const FileSnapshotPersistenceLive = (baseFileName: string) =>
   Layer.effect(
     SnapshotPersistence,
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
-      const file = yield* fs.open(fileName, { flag: "w" })
       return {
-        storeSnapshot: (snapshot) => file.writeAll(snapshot)
+        storeSnapshot: (snapshot) =>
+          Effect.gen(function*() {
+            const time = yield* DateTime.now
+            const parts = DateTime.toPartsUtc(time)
+            const dateString =
+              `${parts.year}-${parts.month}-${parts.day}-${parts.hours}-${parts.minutes}-${parts.seconds}`
+            const fileName = `${baseFileName}-${dateString}.rdb`
+            const file = yield* fs.open(fileName, { flag: "w" })
+            yield* file.writeAll(snapshot)
+          }).pipe(Effect.scoped)
       }
+    })
+  )
+
+export const withSnapshotPersistence = (schedule: Schedule.Schedule<unknown>) =>
+  Layer.scopedDiscard(
+    Effect.gen(function*() {
+      const storage = yield* Storage
+      const snapshotPersistence = yield* SnapshotPersistence
+
+      yield* pipe(
+        Effect.gen(function*() {
+          const snapshot = yield* storage.generateSnapshot
+          yield* snapshotPersistence.storeSnapshot(snapshot)
+        }),
+        Effect.repeat(schedule), // we probably dont want this to run immediately?
+        Effect.forkScoped
+      )
     })
   )
