@@ -31,8 +31,9 @@ const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.
     rawInputStream,
     decodeFromWireFormat,
     Stream.tap((value) => Effect.logTrace("Received RESP: ", value)),
-    processRESP,
-    Stream.tap((value) => Effect.logTrace("Sending RESP: ", value)),
+    // processRESP,
+    // Stream.tap((vaslue) => Effect.logTrace("Sending RESP: ", value)),
+    Stream.as(new RESP.BulkString({ value: "value" })),
     encodeToWireFormat,
     Stream.run(rawOutputSink)
   )
@@ -54,6 +55,7 @@ const decodeFromWireFormat = (
   pipe(
     input,
     Stream.decodeText(),
+    Stream.flattenIterables, // basically turn into stream of individual characters (because our parser kinda sucks idk probably slow but works)
     Stream.mapAccumEffect("", (buffer, nextChunk) =>
       Effect.gen(function*() {
         const newBuffer = buffer + nextChunk

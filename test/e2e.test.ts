@@ -1,13 +1,12 @@
 import * as NodeSocketServer from "@effect/experimental/SocketServer/Node"
 import { NodeContext } from "@effect/platform-node"
-import { expect, it, layer } from "@effect/vitest"
-import { Effect, Layer, Logger, pipe } from "effect"
-import { createClient } from "redis"
+import { expect, layer } from "@effect/vitest"
+import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
 import * as Redis from "../src/client/index.js"
 import { main } from "../src/main.js"
 import * as BasicStorage from "../src/Storage/BasicInMemory.js"
 
-const mainLive = Layer.scopedDiscard(Effect.forkScoped(main))
+const mainLive = Layer.scopedDiscard(Effect.forkScoped(main.pipe(Effect.provide(Logger.minimumLogLevel(LogLevel.All)))))
 
 const sharedServices = pipe(
   mainLive,
@@ -26,26 +25,19 @@ const clientFromServerAddress = Layer.unwrapEffect(
   Effect.gen(function*() {
     const server = yield* NodeSocketServer.SocketServer
     if (server.address._tag === "TcpAddress") {
-      yield* Effect.logInfo("Trying to connect to server on port:", server.address.port)
-      return Redis.layer({ socket: { port: server.address.port } })
+      return Redis.layer({ socket: { port: server.address.port, host: server.address.hostname } })
     } else {
       return yield* Effect.die("Expected a tcp address")
     }
   })
 )
 
-// layer(sharedServices)("e2e", (it) => {
-//   it.effect.skip("test 1", () =>
-//     Effect.gen(function*() {
-//       const client = yield* Redis.Redis
-//       yield* client.use((client) => client.set("key", "value"))
-//       const result = yield* client.use((client) => client.get("key"))
-//       expect(result).toEqual("value")
-//     }).pipe(Effect.provide(clientFromServerAddress)))
-// })
-it("test 2", async () => {
-  const client = await createClient().connect()
-  await client.set("key", "value")
-  const result = await client.get("key")
-  expect(result).toEqual("value")
+layer(sharedServices)("e2e", (it) => {
+  it.effect("test 1", () =>
+    Effect.gen(function*() {
+      const client = yield* Redis.Redis
+      yield* client.use((client) => client.set("key", "value"))
+      const result = yield* client.use((client) => client.get("key"))
+      expect(result).toEqual("value")
+    }).pipe(Effect.provide(clientFromServerAddress)))
 })

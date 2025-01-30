@@ -187,28 +187,28 @@ describe("RESP Parser", () => {
       const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
       expect(Either.isLeft(parsed)).toBe(true)
     }))
+
+  it.effect("should fail when an array has a negative length (thats not -1)", () =>
+    Effect.gen(function*() {
+      const input = "*-2\r\n:1\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
+      expect(Either.isLeft(parsed)).toBe(true)
+    }))
+
+  it.effect("should fail when a bulk string has the wrong length", () =>
+    Effect.gen(function*() {
+      const input = "$3\r\nHello\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
+      expect(Either.isLeft(parsed)).toBe(true)
+    }))
+
+  it.effect("should fail when an array has the wrong length", () =>
+    Effect.gen(function*() {
+      const input = "*3\r\n:1\r\n"
+      const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
+      expect(Either.isLeft(parsed)).toBe(true)
+    }))
 })
-
-it.effect("should fail when an array has a negative length (thats not -1)", () =>
-  Effect.gen(function*() {
-    const input = "*-2\r\n:1\r\n"
-    const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
-    expect(Either.isLeft(parsed)).toBe(true)
-  }))
-
-it.effect("should fail when a bulk string has the wrong length", () =>
-  Effect.gen(function*() {
-    const input = "$3\r\nHello\r\n"
-    const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
-    expect(Either.isLeft(parsed)).toBe(true)
-  }))
-
-it.effect("should fail when an array has the wrong length", () =>
-  Effect.gen(function*() {
-    const input = "*3\r\n:1\r\n"
-    const parsed = yield* Schema.decode(RESP.ValueWireFormat)(input).pipe(Effect.either)
-    expect(Either.isLeft(parsed)).toBe(true)
-  }))
 
 describe("RESP Encoder", () => {
   it.effect("should encode simple string", () =>

@@ -11,15 +11,16 @@ interface RedisImpl {
 export class Redis extends Context.Tag("Redis")<Redis, RedisImpl>() {}
 
 export const layer = (options?: Parameters<typeof createClient>[0]) =>
-  Layer.effect(
+  Layer.scoped(
     Redis,
     Effect.gen(function*() {
-      console.log("creating client")
-      const client = yield* Effect.tryPromise({
-        try: () => createClient(options).connect(),
-        catch: (e) => Effect.fail(new RedisError({ cause: e }))
-      })
-      console.log("client created", client)
+      const client = yield* Effect.acquireRelease(
+        Effect.tryPromise({
+          try: () => createClient(options).connect(),
+          catch: (e) => Effect.fail(new RedisError({ cause: e }))
+        }),
+        (client) => Effect.promise(() => client.quit())
+      )
       return {
         use: (fn) =>
           Effect.gen(function*() {
