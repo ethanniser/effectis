@@ -14,9 +14,11 @@ export namespace Commands {
   export class GET extends Schema.TaggedClass<GET>("GET")("GET", {
     key: Schema.String
   }) {}
+
+  export class QUIT extends Schema.TaggedClass<QUIT>("QUIT")("QUIT", {}) {}
 }
 
-export const Command = Schema.Union(Commands.SET, Commands.GET)
+export const Command = Schema.Union(...Object.values(Commands))
 export type Command = Schema.Schema.Type<typeof Command>
 
 export const CommandFromRESP = pipe(
@@ -31,16 +33,18 @@ export const CommandFromRESP = pipe(
         return yield* Match.value(value[0].value).pipe(
           Match.when(
             "SET",
-            () => new Commands.SET({ key: value[1].value, value: value[2].value })
+            () => Schema.decodeUnknown(Commands.SET)({ key: value[1].value, value: value[2].value })
           ),
           Match.when(
             "GET",
-            () => new Commands.GET({ key: value[1].value })
+            () => Schema.decodeUnknown(Commands.GET)({ key: value[1].value })
           ),
-          Match.option,
-          Effect.catchTag("NoSuchElementException", () =>
-            Effect.fail(new ParseResult.Type(ast, value, "Command first argument unexpected")))
-        )
+          Match.when(
+            "QUIT",
+            () => Effect.succeed(new Commands.QUIT())
+          ),
+          Match.orElse(() => Effect.fail(new ParseResult.Type(ast, value[0].value, "Unknown command first argument")))
+        ).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
       }),
     encode: (command) =>
       Effect.gen(function*() {
@@ -63,6 +67,10 @@ export const CommandFromRESP = pipe(
               new RESP.BulkString({ value: command._tag }),
               new RESP.BulkString({ value: command.key })
             ]
+          ),
+          Match.when(
+            { _tag: "QUIT" },
+            () => [new RESP.BulkString({ value: command._tag })]
           ),
           Match.exhaustive
         )

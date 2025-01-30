@@ -27,13 +27,13 @@ const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.
     Stream.pipeThroughChannel(channel)
   )
   const rawOutputSink = Channel.toSink(channel)
+
   yield* pipe(
     rawInputStream,
     decodeFromWireFormat,
     Stream.tap((value) => Effect.logTrace("Received RESP: ", value)),
-    // processRESP,
-    // Stream.tap((vaslue) => Effect.logTrace("Sending RESP: ", value)),
-    Stream.as(new RESP.BulkString({ value: "value" })),
+    processRESP,
+    Stream.tap((value) => Effect.logTrace("Sending RESP: ", value)),
     encodeToWireFormat,
     Stream.run(rawOutputSink)
   )
@@ -46,7 +46,11 @@ export const processRESP = (
     input,
     parseCommands,
     Stream.tap((value) => Effect.logTrace("Parsed command: ", value)),
-    Stream.mapEffect(runCommand)
+    Stream.mapEffect(Option.match({
+      onSome: (command) => runCommand(command),
+      onNone: () => Effect.succeed(new RESP.SimpleString({ value: "Unknown command" }))
+      // probably should be a error message but that makes the client mad so we just send back something
+    }))
   )
 
 const decodeFromWireFormat = (
@@ -71,10 +75,10 @@ const decodeFromWireFormat = (
 
 const parseCommands = (
   input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
-): Stream.Stream<Command, RedisEffectError, RedisServices> =>
+): Stream.Stream<Option.Option<Command>, RedisEffectError, RedisServices> =>
   pipe(
     input,
-    Stream.mapEffect((value) => Schema.decode(CommandFromRESP)(value))
+    Stream.mapEffect((value) => Schema.decode(CommandFromRESP)(value).pipe(Effect.either, Effect.map(Either.getRight)))
   )
 
 const runCommand = (input: Command): Effect.Effect<RESP.Value, RedisEffectError, RedisServices> =>
