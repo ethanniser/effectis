@@ -1,3 +1,4 @@
+import { FileSystem } from "@effect/platform"
 import { Effect, Match, ParseResult, pipe, Schema } from "effect"
 import { RESP } from "./RESP.js"
 
@@ -45,6 +46,9 @@ export namespace CommandTypes {
   export namespace ServerCommands {
     export class QUIT extends Schema.TaggedClass<QUIT>("QUIT")("QUIT", {}) {}
     export class CLIENT extends Schema.TaggedClass<CLIENT>("CLIENT")("CLIENT", {
+      args: Schema.Array(RESP.Value)
+    }) {}
+    export class COMMAND extends Schema.TaggedClass<COMMAND>("COMMAND")("COMMAND", {
       args: Schema.Array(RESP.Value)
     }) {}
   }
@@ -108,6 +112,14 @@ export const CommandFromRESP = pipe(
                 args: value.slice(1)
               })
           ),
+          Match.when(
+            "COMMAND",
+            () =>
+              Schema.decodeUnknown(Commands.COMMAND)({
+                _tag: "COMMAND",
+                args: value.slice(1)
+              })
+          ),
           Match.orElse(() => Effect.fail(new ParseResult.Type(ast, value[0].value, "Unknown command first argument")))
         ).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
       }),
@@ -146,6 +158,15 @@ export const CommandFromRESP = pipe(
               ...command.args
             ]
           ),
+          Match.when(
+            { _tag: "COMMAND" },
+            (
+              command
+            ) => [
+              new RESP.BulkString({ value: command._tag }),
+              ...command.args
+            ]
+          ),
           Match.exhaustive
         )
 
@@ -153,3 +174,33 @@ export const CommandFromRESP = pipe(
       })
   })
 )
+
+const supportedCommands = Object.keys(Commands)
+
+export const generateCommandDocResponse = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const json = yield* fs.readFileString("external/commands.json")
+  const commands = JSON.parse(json)
+  const filteredCommands = Object.fromEntries(
+    Object.entries(commands).filter(([command]) => supportedCommands.includes(command))
+  )
+  return toRESP(filteredCommands)
+})
+
+function toRESP(obj: unknown): RESP.Value {
+  if (typeof obj === "string") return new RESP.BulkString({ value: obj })
+  if (typeof obj === "number") return new RESP.Integer({ value: obj })
+  if (Array.isArray(obj)) return new RESP.Array({ value: obj.map(toRESP) })
+  if (typeof obj === "object" && obj !== null) {
+    return new RESP.Array({
+      value: Object.entries(obj).flatMap(([k, v]) => [
+        new RESP.BulkString({ value: k }),
+        toRESP(v)
+      ])
+    })
+  }
+  if (typeof obj === "boolean") return new RESP.Integer({ value: obj ? 1 : 0 })
+
+  console.error("Unknown type", obj)
+  throw new Error(`Unknown type: ${typeof obj}`)
+}

@@ -1,5 +1,5 @@
 import { FileSystem } from "@effect/platform"
-import { Context, DateTime, Effect, Layer, pipe, Queue, Schedule, Schema } from "effect"
+import { Context, Effect, Layer, pipe, Queue, Schedule, Schema } from "effect"
 import { CommandTypes } from "./Command.js"
 import type { RESP } from "./RESP.js"
 
@@ -92,25 +92,19 @@ export class SnapshotPersistence
   extends Context.Tag("SnapshotPersistence")<SnapshotPersistence, SnapshotPersistenceImpl>()
 {}
 
-export const FileSnapshotPersistenceLive = (baseFileName: string) =>
-  Layer.effect(
-    SnapshotPersistence,
-    Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      return {
-        storeSnapshot: (snapshot) =>
-          Effect.gen(function*() {
-            const time = yield* DateTime.now
-            const parts = DateTime.toPartsUtc(time)
-            const dateString =
-              `${parts.year}-${parts.month}-${parts.day}-${parts.hours}-${parts.minutes}-${parts.seconds}`
-            const fileName = `${baseFileName}-${dateString}.rdb`
-            const file = yield* fs.open(fileName, { flag: "w" })
-            yield* file.writeAll(snapshot)
-          }).pipe(Effect.scoped)
-      }
-    })
-  )
+export const FileSnapshotPersistenceLive = Layer.effect(
+  SnapshotPersistence,
+  Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    return {
+      storeSnapshot: (snapshot) =>
+        Effect.gen(function*() {
+          const file = yield* fs.open("dump.rdb", { flag: "w" })
+          yield* file.writeAll(snapshot)
+        }).pipe(Effect.scoped)
+    }
+  })
+)
 
 export const withSnapshotPersistence = (schedule: Schedule.Schedule<unknown>) =>
   Layer.scopedDiscard(
