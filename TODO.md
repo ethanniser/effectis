@@ -9,3 +9,8 @@
 log and flush peristence
 
 - vanilla node reference implementation (does this actually need anything special to do concurrent transactions?)
+
+---
+
+- fix command doc response
+- implement more commands
