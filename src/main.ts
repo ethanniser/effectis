@@ -10,14 +10,17 @@ type RedisServices = Storage
 
 export const main = Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
-  yield* Effect.log("Server started", server.address)
+  yield* Effect.logInfo(
+    "Server started on port:",
+    server.address._tag === "TcpAddress" ? server.address.port : undefined
+  )
   yield* server.run(handleConnection)
 }).pipe(
-  Effect.catchAll((e) => Effect.logError("Error", e))
+  Effect.catchAll((e) => Effect.logError("Uncaught error", e))
 )
 
 const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.Socket) {
-  yield* Effect.log("New connection")
+  yield* Effect.logInfo("New connection")
   const channel = Socket.toChannel<never>(socket)
 
   const rawInputStream = Stream.never.pipe(
@@ -27,11 +30,13 @@ const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.
   yield* pipe(
     rawInputStream,
     decodeFromWireFormat,
+    Stream.tap((value) => Effect.logTrace("Received RESP: ", value)),
     processRESP,
+    Stream.tap((value) => Effect.logTrace("Sending RESP: ", value)),
     encodeToWireFormat,
     Stream.run(rawOutputSink)
   )
-}, Effect.onExit(() => Effect.log("Connection closed")))
+}, Effect.onExit(() => Effect.logInfo("Connection closed")))
 
 export const processRESP = (
   input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
@@ -39,6 +44,7 @@ export const processRESP = (
   pipe(
     input,
     parseCommands,
+    Stream.tap((value) => Effect.logTrace("Parsed command: ", value)),
     Stream.mapEffect(runCommand)
   )
 

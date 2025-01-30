@@ -14,7 +14,12 @@ export const layer = (options?: Parameters<typeof createClient>[0]) =>
   Layer.effect(
     Redis,
     Effect.gen(function*() {
-      const client = yield* Effect.tryPromise(() => createClient(options).connect())
+      console.log("creating client")
+      const client = yield* Effect.tryPromise({
+        try: () => createClient(options).connect(),
+        catch: (e) => Effect.fail(new RedisError({ cause: e }))
+      })
+      console.log("client created", client)
       return {
         use: (fn) =>
           Effect.gen(function*() {
