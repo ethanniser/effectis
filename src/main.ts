@@ -1,12 +1,14 @@
 import * as SocketServer from "@effect/experimental/SocketServer"
 import { Socket } from "@effect/platform"
-import { Channel, Effect, Either, identity, Option, pipe, Schema, Stream } from "effect"
-import { type Command, CommandFromRESP } from "./Command.js"
+import { Channel, Effect, Either, identity, Match, Option, pipe, Schema, Stream } from "effect"
+import { type Command, CommandFromRESP, CommandTypes } from "./Command.js"
 import { RESP } from "./RESP.js"
 import { Storage } from "./Storage.js"
 
 type RedisEffectError = unknown
 type RedisServices = Storage
+
+const defaultNonErrorUnknownResponse = new RESP.SimpleString({ value: "Unknown command" })
 
 export const main = Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
@@ -48,7 +50,7 @@ export const processRESP = (
     Stream.tap((value) => Effect.logTrace("Parsed command: ", value)),
     Stream.mapEffect(Option.match({
       onSome: (command) => runCommand(command),
-      onNone: () => Effect.succeed(new RESP.SimpleString({ value: "Unknown command" }))
+      onNone: () => Effect.succeed(defaultNonErrorUnknownResponse)
       // probably should be a error message but that makes the client mad so we just send back something
     }))
   )
@@ -78,14 +80,37 @@ const parseCommands = (
 ): Stream.Stream<Option.Option<Command>, RedisEffectError, RedisServices> =>
   pipe(
     input,
-    Stream.mapEffect((value) => Schema.decode(CommandFromRESP)(value).pipe(Effect.either, Effect.map(Either.getRight)))
+    Stream.mapEffect((value) =>
+      Schema.decode(CommandFromRESP)(value).pipe(
+        Effect.tapError((e) => Effect.logError("Error parsing command", e)),
+        Effect.either,
+        Effect.map(Either.getRight)
+      )
+    )
   )
 
 const runCommand = (input: Command): Effect.Effect<RESP.Value, RedisEffectError, RedisServices> =>
   Effect.gen(function*() {
-    const storage = yield* Storage
-    const result = yield* storage.run(input)
-    return result
+    if (Schema.is(CommandTypes.Storage)(input)) {
+      const storage = yield* Storage
+      const result = yield* storage.run(input)
+      return result
+    } else if (Schema.is(CommandTypes.Server)(input)) {
+      return yield* processServerCommand(input)
+      // } else if (Schema.is(CommandTypes.Messaging)(input)) {
+      // } else if (Schema.is(CommandTypes.Execution)(input)) {
+    } else {
+      return defaultNonErrorUnknownResponse
+    }
+  })
+
+const processServerCommand = (input: CommandTypes.Server): Effect.Effect<RESP.Value, RedisEffectError, RedisServices> =>
+  Effect.gen(function*() {
+    return Match.value(input._tag).pipe(
+      Match.when("QUIT", () => new RESP.SimpleString({ value: "OK" })),
+      Match.when("CLIENT", () => new RESP.SimpleString({ value: "OK" })),
+      Match.orElse(() => defaultNonErrorUnknownResponse)
+    )
   })
 
 const encodeToWireFormat = (

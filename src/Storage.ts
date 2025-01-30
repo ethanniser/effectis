@@ -1,6 +1,6 @@
 import { FileSystem } from "@effect/platform"
 import { Context, DateTime, Effect, Layer, pipe, Queue, Schedule, Schema } from "effect"
-import type { Command } from "./Command.js"
+import type { CommandTypes } from "./Command.js"
 import type { RESP } from "./RESP.js"
 
 // add combinators to add log and flush persistence (with seperate persistence layer)
@@ -10,14 +10,14 @@ export class StorageError extends Schema.TaggedError<StorageError>("StorageError
 }) {}
 
 export interface StorageImpl {
-  run(command: Command): Effect.Effect<RESP.Value, StorageError, never>
+  run(command: CommandTypes.Storage): Effect.Effect<RESP.Value, StorageError, never>
   generateSnapshot: Effect.Effect<Uint8Array, StorageError, never>
 }
 
 export class Storage extends Context.Tag("Storage")<Storage, StorageImpl>() {}
 
 export interface LogPersistenceImpl {
-  drain: Queue.Enqueue<Command>
+  drain: Queue.Enqueue<CommandTypes.Storage>
 }
 
 export class LogPersistence extends Context.Tag("LogPersistence")<LogPersistence, LogPersistenceImpl>() {}
@@ -34,7 +34,7 @@ export const LogToAppendOnlyFileLive = (
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
       const file = yield* fs.open(fileName, { flag: "a" })
-      const queue = yield* Queue.unbounded<Command>()
+      const queue = yield* Queue.unbounded<CommandTypes.Storage>()
 
       if (isSchedule(options.sync)) {
         yield* pipe(
@@ -48,7 +48,7 @@ export const LogToAppendOnlyFileLive = (
 
       yield* pipe(
         Effect.gen(function*() {
-          const commands = yield* queue.takeAll
+          const _commands = yield* queue.takeAll
           // filter for write only
           // serialize
           yield* file.writeAll(new Uint8Array())
