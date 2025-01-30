@@ -11,14 +11,14 @@ type RedisServices = Storage
 export const main = Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
   yield* Effect.logInfo(
-    "Server started on port:",
-    server.address._tag === "TcpAddress" ? server.address.port : undefined
+    `Server started on port: ${server.address._tag === "TcpAddress" ? server.address.port : "unknown"}`
   )
   yield* server.run(handleConnection)
 }).pipe(
   Effect.catchAll((e) => Effect.logError("Uncaught error", e))
 )
 
+// can use fiberrefs for connection local state
 const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.Socket) {
   yield* Effect.logInfo("New connection")
   const channel = Socket.toChannel<never>(socket)

@@ -18,7 +18,7 @@ const sharedServices = pipe(
     )
   ),
   // by default the logger is removed from the test context
-  Layer.provide(Logger.replace(Logger.defaultLogger, Logger.prettyLoggerDefault))
+  Layer.provide(Logger.pretty)
 )
 
 const clientFromServerAddress = Layer.unwrapEffect(
@@ -33,7 +33,7 @@ const clientFromServerAddress = Layer.unwrapEffect(
 )
 
 layer(sharedServices)("e2e", (it) => {
-  it.effect("test 1", () =>
+  it.effect("basic SET and GET", () =>
     Effect.gen(function*() {
       const client = yield* Redis.Redis
       yield* client.use((client) => client.set("key", "value"))
