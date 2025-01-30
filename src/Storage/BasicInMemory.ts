@@ -24,7 +24,7 @@ export const layer = Layer.effect(
             }
           }
         }),
-      generateSnapshot: Effect.never
+      generateSnapshot: Effect.die("Not implemented")
     }
   })
 )

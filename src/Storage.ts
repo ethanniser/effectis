@@ -1,6 +1,6 @@
 import { FileSystem } from "@effect/platform"
 import { Context, DateTime, Effect, Layer, pipe, Queue, Schedule, Schema } from "effect"
-import type { CommandTypes } from "./Command.js"
+import { CommandTypes } from "./Command.js"
 import type { RESP } from "./RESP.js"
 
 // add combinators to add log and flush persistence (with seperate persistence layer)
@@ -49,7 +49,6 @@ export const LogToAppendOnlyFileLive = (
       yield* pipe(
         Effect.gen(function*() {
           const _commands = yield* queue.takeAll
-          // filter for write only
           // serialize
           yield* file.writeAll(new Uint8Array())
           if (options.sync === "always") {
@@ -73,7 +72,13 @@ export const withLogPersistence = Layer.effect(
     const logPersistence = yield* LogPersistence
     const newStorage = Storage.of({
       ...oldStorage,
-      run: (command) => oldStorage.run(command).pipe(Effect.zipLeft(logPersistence.drain.offer(command)))
+      run: (command) =>
+        oldStorage.run(command).pipe(Effect.zipLeft(
+          // only send commands that are effectful to the log drain
+          Schema.is(CommandTypes.StorageCommands.Effectful)(command)
+            ? logPersistence.drain.offer(command)
+            : Effect.void
+        ))
     })
     return newStorage
   })

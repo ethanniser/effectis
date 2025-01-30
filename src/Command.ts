@@ -8,24 +8,37 @@ export namespace CommandTypes {
   // commands related to storage
   // (set, get, del, exists, type, etc.)
   export namespace StorageCommands {
-    export class SET extends Schema.TaggedClass<SET>("SET")("SET", {
-      key: Schema.String,
-      value: Schema.String
-    }) {}
+    // commands that only read data (do not need to be included in the WAL)
+    export namespace PureCommands {
+      export class GET extends Schema.TaggedClass<GET>("GET")("GET", {
+        key: Schema.String
+      }) {}
+    }
+    export const Pure = Schema.Union(...Object.values(PureCommands))
+    export type Pure = Schema.Schema.Type<typeof Pure>
 
-    export class GET extends Schema.TaggedClass<GET>("GET")("GET", {
-      key: Schema.String
-    }) {}
+    // commands that modify data (must be included in the WAL)
+    export namespace EffectfulCommands {
+      export class SET extends Schema.TaggedClass<SET>("SET")("SET", {
+        key: Schema.String,
+        value: Schema.String
+      }) {}
+    }
+    export const Effectful = Schema.Union(...Object.values(EffectfulCommands))
+    export type Effectful = Schema.Schema.Type<typeof Effectful>
   }
 
-  export const Storage = Schema.Union(...Object.values(StorageCommands))
+  export const Storage = Schema.Union(
+    ...Object.values(StorageCommands.PureCommands),
+    ...Object.values(StorageCommands.EffectfulCommands)
+  )
   export type Storage = Schema.Schema.Type<typeof Storage>
 
   // commands that modify how commands are executed
   // (multi, exec, watch, discard, etc.)
   export namespace ExecutionCommands {}
-  // export const ExecutionCommand = Schema.Union(...Object.values(Execution))
-  // export type ExecutionCommand = Schema.Schema.Type<typeof ExecutionCommand>
+  // export const Execution = Schema.Union(...Object.values(ExecutionCommands))
+  // export type Execution = Schema.Schema.Type<typeof Execution>
 
   // commands that configure and modify the server
   // (client, config, info, etc.)
@@ -41,12 +54,13 @@ export namespace CommandTypes {
   // Commands that facilitate real-time communication but don’t store data
   // (publish, subscribe, etc.)
   export namespace MessagingCommands {}
-  // export const MessagingCommand = Schema.Union(...Object.values(Messaging))
-  // export type MessagingCommand = Schema.Schema.Type<typeof MessagingCommand>
+  // export const Messaging = Schema.Union(...Object.values(MessagingCommands))
+  // export type Messaging = Schema.Schema.Type<typeof Messaging>
 }
 
 const Commands = {
-  ...CommandTypes.StorageCommands,
+  ...CommandTypes.StorageCommands.EffectfulCommands,
+  ...CommandTypes.StorageCommands.PureCommands,
   // ...CommandTypes.Execution,
   ...CommandTypes.ServerCommands
   // ...CommandTypes.Messaging
