@@ -54,6 +54,7 @@ export default [
     },
 
     rules: {
+      "require-yield": "off",
       "codegen/codegen": "error",
       "no-fallthrough": "off",
       "no-irregular-whitespace": "off",
