@@ -1,11 +1,12 @@
+import { NodeContext } from "@effect/platform-node"
 import { describe, expect, it } from "@effect/vitest"
-import { Chunk, Effect, pipe, Schema, Stream } from "effect"
+import { Chunk, Effect, Layer, pipe, Schema, Stream } from "effect"
 import { CommandFromRESP, Commands } from "../src/Command.js"
 import { processRESP } from "../src/main.js"
 import { RESP } from "../src/RESP.js"
 import * as BasicStorage from "../src/Storage/BasicInMemory.js"
 
-const TestServices = BasicStorage.layer
+const TestServices = Layer.merge(BasicStorage.layer, NodeContext.layer)
 
 const runInput = (input: RESP.Value) =>
   pipe(
@@ -19,7 +20,7 @@ describe("Storage", () => {
     "SET",
     () =>
       Effect.gen(function*() {
-        const input = yield* Schema.encode(CommandFromRESP)(new Commands.Set({ key: "key", value: "value" }))
+        const input = yield* Schema.encode(CommandFromRESP)(new Commands.SET({ key: "key", value: "value" }))
         const result = yield* runInput(input)
         expect(result).toEqual(Chunk.make(new RESP.SimpleString({ value: "OK" })))
       }).pipe(Effect.provide(TestServices))
@@ -28,10 +29,10 @@ describe("Storage", () => {
     "SET and GET",
     () =>
       Effect.gen(function*() {
-        const input1 = yield* Schema.encode(CommandFromRESP)(new Commands.Set({ key: "key", value: "value" }))
+        const input1 = yield* Schema.encode(CommandFromRESP)(new Commands.SET({ key: "key", value: "value" }))
         yield* runInput(input1)
 
-        const input2 = yield* Schema.encode(CommandFromRESP)(new Commands.Get({ key: "key" }))
+        const input2 = yield* Schema.encode(CommandFromRESP)(new Commands.GET({ key: "key" }))
         const result = yield* runInput(input2)
         expect(result).toEqual(Chunk.make(new RESP.BulkString({ value: "value" })))
       }).pipe(Effect.provide(TestServices))

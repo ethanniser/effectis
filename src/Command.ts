@@ -1,4 +1,3 @@
-import { FileSystem } from "@effect/platform"
 import { Effect, Match, ParseResult, pipe, Schema } from "effect"
 import { RESP } from "./RESP.js"
 
@@ -62,7 +61,7 @@ export namespace CommandTypes {
   // export type Messaging = Schema.Schema.Type<typeof Messaging>
 }
 
-const Commands = {
+export const Commands = {
   ...CommandTypes.StorageCommands.EffectfulCommands,
   ...CommandTypes.StorageCommands.PureCommands,
   // ...CommandTypes.Execution,
@@ -175,46 +174,46 @@ export const CommandFromRESP = pipe(
   })
 )
 
-const supportedCommands = Object.keys(Commands)
-const returnedKeys = ["summary", "since", "group", "complexity", "arguments"]
+// const supportedCommands = Object.keys(Commands)
+// const returnedKeys = ["summary", "since", "group", "complexity", "arguments"]
 
-export const generateCommandDocResponse = Effect.gen(function*() {
-  const fs = yield* FileSystem.FileSystem
-  const json = yield* fs.readFileString("external/commands.json")
-  const commands = JSON.parse(json)
-  const filteredCommands = Object.fromEntries(
-    Object.entries(commands).filter(([command]) => supportedCommands.includes(command)).map(
-      ([command, commandData]) => {
-        const filteredData = Object.fromEntries(
-          Object.entries(commandData as object).filter(([key]) => returnedKeys.includes(key))
-        )
-        return [command, filteredData]
-      }
-    )
-  )
+// export const generateCommandDocResponse = Effect.gen(function*() {
+//   const fs = yield* FileSystem.FileSystem
+//   const json = yield* fs.readFileString("external/commands.json")
+//   const commands = JSON.parse(json)
+//   const filteredCommands = Object.fromEntries(
+//     Object.entries(commands).filter(([command]) => supportedCommands.includes(command)).map(
+//       ([command, commandData]) => {
+//         const filteredData = Object.fromEntries(
+//           Object.entries(commandData as object).filter(([key]) => returnedKeys.includes(key))
+//         )
+//         return [command, filteredData]
+//       }
+//     )
+//   )
 
-  return toRESP(filteredCommands)
-})
+//   return toRESP(filteredCommands)
+// })
 
-function toRESP(value: object): RESP.Value {
-  if (Array.isArray(value)) {
-    return new RESP.Array({
-      value: value.map(toRESP)
-    })
-  } else if (typeof value === "object" && value !== null) {
-    return new RESP.Array({
-      value: Object.entries(value).flatMap(([key, value]) => [
-        new RESP.BulkString({ value: key }),
-        toRESP(value)
-      ])
-    })
-  } else if (typeof value === "number") {
-    return new RESP.Integer({ value })
-  } else if (typeof value === "boolean") {
-    return new RESP.SimpleString({ value: value ? "true" : "false" })
-  } else if (value === null) {
-    return new RESP.BulkString({ value: null })
-  } else {
-    return new RESP.BulkString({ value: String(value) })
-  }
-}
+// function toRESP(value: object): RESP.Value {
+//   if (Array.isArray(value)) {
+//     return new RESP.Array({
+//       value: value.map(toRESP)
+//     })
+//   } else if (typeof value === "object" && value !== null) {
+//     return new RESP.Array({
+//       value: Object.entries(value).flatMap(([key, value]) => [
+//         new RESP.BulkString({ value: key }),
+//         toRESP(value)
+//       ])
+//     })
+//   } else if (typeof value === "number") {
+//     return new RESP.Integer({ value })
+//   } else if (typeof value === "boolean") {
+//     return new RESP.SimpleString({ value: value ? "true" : "false" })
+//   } else if (value === null) {
+//     return new RESP.BulkString({ value: null })
+//   } else {
+//     return new RESP.BulkString({ value: String(value) })
+//   }
+// }

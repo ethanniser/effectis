@@ -16,9 +16,9 @@ const sharedServices = pipe(
       NodeSocketServer.layer({ port: 6379 }),
       NodeContext.layer
     )
-  ),
+  )
   // by default the logger is removed from the test context
-  Layer.provide(Logger.pretty)
+  // Layer.provide(Logger.pretty)
 )
 
 const clientFromServerAddress = Layer.unwrapEffect(

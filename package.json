@@ -28,32 +28,32 @@
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.5.0",
-    "@changesets/cli": "^2.27.8",
+    "@changesets/cli": "^2.27.12",
     "@effect/cli": "latest",
-    "@effect/eslint-plugin": "^0.2.0",
-    "@effect/experimental": "^0.36.0",
-    "@effect/language-service": "^0.1.0",
+    "@effect/eslint-plugin": "latest",
+    "@effect/experimental": "latest",
+    "@effect/language-service": "latest",
     "@effect/platform": "latest",
     "@effect/platform-node": "latest",
     "@effect/vitest": "latest",
     "@eslint/compat": "1.1.1",
     "@eslint/eslintrc": "3.1.0",
     "@eslint/js": "9.10.0",
-    "@types/node": "^22.5.2",
-    "@typescript-eslint/eslint-plugin": "^8.4.0",
-    "@typescript-eslint/parser": "^8.4.0",
+    "@types/node": "^22.13.0",
+    "@typescript-eslint/eslint-plugin": "^8.23.0",
+    "@typescript-eslint/parser": "^8.23.0",
     "effect": "latest",
-    "eslint": "^9.10.0",
-    "eslint-import-resolver-typescript": "^3.6.3",
+    "eslint": "^9.19.0",
+    "eslint-import-resolver-typescript": "^3.7.0",
     "eslint-plugin-codegen": "0.28.0",
     "eslint-plugin-deprecation": "^3.0.0",
-    "eslint-plugin-import": "^2.30.0",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
-    "tsup": "^8.2.4",
-    "tsx": "^4.19.1",
-    "typescript": "^5.6.2",
-    "vitest": "^2.0.5"
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.9"
   },
   "pnpm": {
     "patchedDependencies": {
@@ -61,7 +61,7 @@
     }
   },
   "dependencies": {
-    "@effect/platform-bun": "^0.52.0",
+    "@effect/platform-bun": "^0.52.2",
     "redis": "^4.7.0"
   }
 }

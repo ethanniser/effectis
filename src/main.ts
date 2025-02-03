@@ -2,7 +2,7 @@ import * as SocketServer from "@effect/experimental/SocketServer"
 import type { FileSystem } from "@effect/platform"
 import { Socket } from "@effect/platform"
 import { Channel, Effect, Either, identity, Match, Option, pipe, Schema, Stream } from "effect"
-import { type Command, CommandFromRESP, CommandTypes, generateCommandDocResponse } from "./Command.js"
+import { type Command, CommandFromRESP, CommandTypes } from "./Command.js"
 import { RESP } from "./RESP.js"
 import { Storage } from "./Storage.js"
 
@@ -110,14 +110,14 @@ const processServerCommand = (input: CommandTypes.Server): Effect.Effect<RESP.Va
     return yield* Match.value(input).pipe(
       Match.when({ _tag: "QUIT" }, () => Effect.succeed(new RESP.SimpleString({ value: "OK" }))), // ! this is wrong
       Match.when({ _tag: "CLIENT" }, () => Effect.succeed(new RESP.SimpleString({ value: "OK" }))),
-      Match.when({ _tag: "COMMAND" }, (input) => {
-        console.log("here", input)
-        if (input.args[0]?.value === "DOCS") {
-          return generateCommandDocResponse
-        } else {
-          return Effect.succeed(defaultNonErrorUnknownResponse)
-        }
-      }),
+      // Match.when({ _tag: "COMMAND" }, (input) => {
+      //   console.log("here", input)
+      //   if (input.args[0]?.value === "DOCS") {
+      //     return generateCommandDocResponse
+      //   } else {
+      //     return Effect.succeed(defaultNonErrorUnknownResponse)
+      //   }
+      // }),
       Match.orElse(() => Effect.succeed(defaultNonErrorUnknownResponse))
     )
   })

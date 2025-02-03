@@ -3,8 +3,6 @@ import { Context, Effect, Layer, pipe, Queue, Schedule, Schema } from "effect"
 import { CommandTypes } from "./Command.js"
 import type { RESP } from "./RESP.js"
 
-// add combinators to add log and flush persistence (with seperate persistence layer)
-
 export class StorageError extends Schema.TaggedError<StorageError>("StorageError")("StorageError", {
   message: Schema.String
 }) {}
@@ -39,7 +37,7 @@ export const LogToAppendOnlyFileLive = (
       if (isSchedule(options.sync)) {
         yield* pipe(
           Effect.gen(function*() {
-            // fsync
+            // yield* file.sync
           }),
           Effect.repeat(options.sync),
           Effect.forkScoped
@@ -52,7 +50,7 @@ export const LogToAppendOnlyFileLive = (
           // serialize
           yield* file.writeAll(new Uint8Array())
           if (options.sync === "always") {
-            // fsync
+            // yield* file.sync
           }
         }),
         Effect.forever,
@@ -117,7 +115,7 @@ export const withSnapshotPersistence = (schedule: Schedule.Schedule<unknown>) =>
           const snapshot = yield* storage.generateSnapshot
           yield* snapshotPersistence.storeSnapshot(snapshot)
         }),
-        Effect.repeat(schedule), // we probably dont want this to run immediately?
+        Effect.repeat(schedule),
         Effect.forkScoped
       )
     })
