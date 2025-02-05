@@ -4,70 +4,50 @@ import { RESP } from "./RESP.js"
 // commands schould be serializable for WAL purposes
 // some way to distinguish write vs read commands (only write commands should be replayed)
 
-export namespace CommandTypes {
+export namespace Commands {
   // commands related to storage
   // (set, get, del, exists, type, etc.)
-  export namespace StorageCommands {
-    // commands that only read data (do not need to be included in the WAL)
-    export namespace PureCommands {
-      export class GET extends Schema.TaggedClass<GET>("GET")("GET", {
-        key: Schema.String
-      }) {}
-    }
-    export const Pure = Schema.Union(...Object.values(PureCommands))
-    export type Pure = Schema.Schema.Type<typeof Pure>
 
-    // commands that modify data (must be included in the WAL)
-    export namespace EffectfulCommands {
-      export class SET extends Schema.TaggedClass<SET>("SET")("SET", {
-        key: Schema.String,
-        value: Schema.String
-      }) {}
-    }
-    export const Effectful = Schema.Union(...Object.values(EffectfulCommands))
-    export type Effectful = Schema.Schema.Type<typeof Effectful>
-  }
+  // commands that only read data (do not need to be included in the WAL)
+  export class GET extends Schema.TaggedClass<GET>("GET")("GET", {
+    key: Schema.String
+  }) {}
 
-  export const Storage = Schema.Union(
-    ...Object.values(StorageCommands.PureCommands),
-    ...Object.values(StorageCommands.EffectfulCommands)
-  )
-  export type Storage = Schema.Schema.Type<typeof Storage>
+  // commands that modify data (must be included in the WAL)
+  export class SET extends Schema.TaggedClass<SET>("SET")("SET", {
+    key: Schema.String,
+    value: Schema.String
+  }) {}
 
   // commands that modify how commands are executed
   // (multi, exec, watch, discard, etc.)
-  export namespace ExecutionCommands {}
-  // export const Execution = Schema.Union(...Object.values(ExecutionCommands))
-  // export type Execution = Schema.Schema.Type<typeof Execution>
 
   // commands that configure and modify the server
   // (client, config, info, etc.)
-  export namespace ServerCommands {
-    export class QUIT extends Schema.TaggedClass<QUIT>("QUIT")("QUIT", {}) {}
-    export class CLIENT extends Schema.TaggedClass<CLIENT>("CLIENT")("CLIENT", {
-      args: Schema.Array(RESP.Value)
-    }) {}
-    export class COMMAND extends Schema.TaggedClass<COMMAND>("COMMAND")("COMMAND", {
-      args: Schema.Array(RESP.Value)
-    }) {}
-  }
-  export const Server = Schema.Union(...Object.values(ServerCommands))
-  export type Server = Schema.Schema.Type<typeof Server>
+  export class QUIT extends Schema.TaggedClass<QUIT>("QUIT")("QUIT", {}) {}
+  export class CLIENT extends Schema.TaggedClass<CLIENT>("CLIENT")("CLIENT", {
+    args: Schema.Array(RESP.Value)
+  }) {}
+  export class COMMAND extends Schema.TaggedClass<COMMAND>("COMMAND")("COMMAND", {
+    args: Schema.Array(RESP.Value)
+  }) {}
 
   // Commands that facilitate real-time communication but don’t store data
   // (publish, subscribe, etc.)
-  export namespace MessagingCommands {}
-  // export const Messaging = Schema.Union(...Object.values(MessagingCommands))
-  // export type Messaging = Schema.Schema.Type<typeof Messaging>
 }
 
-export const Commands = {
-  ...CommandTypes.StorageCommands.EffectfulCommands,
-  ...CommandTypes.StorageCommands.PureCommands,
-  // ...CommandTypes.Execution,
-  ...CommandTypes.ServerCommands
-  // ...CommandTypes.Messaging
-} as const
+export namespace CommandTypes {
+  export type Storage = Commands.GET | Commands.SET
+  export const Storage = Schema.Union(Commands.GET, Commands.SET)
+  export namespace StorageCommands {
+    export type Pure = Commands.GET
+    export const Pure = Schema.Union(Commands.GET)
+    export type Effectful = Commands.SET
+    export const Effectful = Schema.Union(Commands.SET)
+  }
+  export type Server = Commands.QUIT | Commands.CLIENT | Commands.COMMAND
+  export const Server = Schema.Union(Commands.QUIT, Commands.CLIENT, Commands.COMMAND)
+}
 
 export const Command = Schema.Union(...Object.values(Commands))
 export type Command = Schema.Schema.Type<typeof Command>

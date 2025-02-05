@@ -7,9 +7,9 @@ export class StorageError extends Schema.TaggedError<StorageError>("StorageError
   message: Schema.String
 }) {}
 
-// may need a `runTransaction(commands: CommandTypes.Storage[]): Effect.Effect<RESP.Value[], StorageError, never>``
 export interface StorageImpl {
   run(command: CommandTypes.Storage): Effect.Effect<RESP.Value, StorageError, never>
+  runTransaction(commands: Array<CommandTypes.Storage>): Effect.Effect<Array<RESP.Value>, StorageError, never>
   generateSnapshot: Effect.Effect<Uint8Array, StorageError, never>
 }
 
