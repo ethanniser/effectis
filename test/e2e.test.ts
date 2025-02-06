@@ -4,7 +4,7 @@ import { expect, layer } from "@effect/vitest"
 import { Effect, Layer, Logger, LogLevel, pipe } from "effect"
 import * as Redis from "../src/client/index.js"
 import { main } from "../src/main.js"
-import * as BasicStorage from "../src/Storage/BasicInMemory.js"
+import * as STMBackedInMemory from "../src/Storage/STMBackedInMemory.js"
 
 const mainLive = Layer.scopedDiscard(Effect.forkScoped(main.pipe(Effect.provide(Logger.minimumLogLevel(LogLevel.All)))))
 
@@ -12,7 +12,7 @@ const sharedServices = pipe(
   mainLive,
   Layer.provideMerge(
     Layer.mergeAll(
-      BasicStorage.layer,
+      STMBackedInMemory.layer,
       NodeSocketServer.layer({ port: 6379 }),
       NodeContext.layer
     )
