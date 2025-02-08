@@ -108,14 +108,14 @@ log and flush peristence
 - [ ] `FLUSHALL`
   - [ ] `FLUSHALL`
   - [ ] `FLUSHALL ASYNC`
-- [ ] `DBSIZE`
 - [ ] `COMMAND`
   - [ ] `COMMAND DOCS`
+- [ ] `QUIT`
+- [ ] `CLIENT`
+- [ ] `INFO`
 
 ### Execution
 
-- [ ] `EVAL`
-  - [ ] `EVAL script numkeys key1 key2 ... arg1 arg2 ...`
 - [ ] `MULTI`
 - [ ] `EXEC`
 - [ ] `DISCARD`
@@ -126,8 +126,7 @@ log and flush peristence
 
 ### Messaging
 
-- [ ] `PUBLISH`
-  - [ ] `PUBLISH channel message`
+- [ ] `PUBLISH channel message`
 - [ ] `SUBSCRIBE`
   - [ ] `SUBSCRIBE channel`
   - [ ] `SUBSCRIBE channel1 channel2 ... channelN`

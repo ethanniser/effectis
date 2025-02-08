@@ -132,21 +132,67 @@ export namespace Commands {
     key: Schema.String
   }) {}
 
+  // Set Commands
+
+  export class SADD extends Schema.TaggedClass<SADD>("SADD")("SADD", {
+    key: Schema.String,
+    values: Schema.Array(Schema.String)
+  }) {}
+
+  export class SREM extends Schema.TaggedClass<SREM>("SREM")("SREM", {
+    key: Schema.String,
+    values: Schema.Array(Schema.String)
+  }) {}
+
+  export class SMEMBERS extends Schema.TaggedClass<SMEMBERS>("SMEMBERS")("SMEMBERS", {
+    key: Schema.String
+  }) {}
+
+  export class SCARD extends Schema.TaggedClass<SCARD>("SCARD")("SCARD", {
+    key: Schema.String
+  }) {}
+
+  export class SISMEMBER extends Schema.TaggedClass<SISMEMBER>("SISMEMBER")("SISMEMBER", {
+    key: Schema.String,
+    value: Schema.String
+  }) {}
+
   // commands that modify how commands are executed
   // (multi, exec, watch, discard, etc.)
+
+  export class MULTI extends Schema.TaggedClass<MULTI>("MULTI")("MULTI", {}) {}
+  export class EXEC extends Schema.TaggedClass<EXEC>("EXEC")("EXEC", {}) {}
+  export class DISCARD extends Schema.TaggedClass<DISCARD>("DISCARD")("DISCARD", {}) {}
+  export class WATCH extends Schema.TaggedClass<WATCH>("WATCH")("WATCH", {
+    keys: Schema.Array(Schema.String)
+  }) {}
+  export class UNWATCH extends Schema.TaggedClass<UNWATCH>("UNWATCH")("UNWATCH", {}) {}
 
   // commands that configure and modify the server
   // (client, config, info, etc.)
   export class QUIT extends Schema.TaggedClass<QUIT>("QUIT")("QUIT", {}) {}
-  export class CLIENT extends Schema.TaggedClass<CLIENT>("CLIENT")("CLIENT", {
-    args: Schema.Array(RESP.Value)
+  export class PING extends Schema.TaggedClass<PING>("PING")("PING", {
+    message: Schema.optional(Schema.String)
+  }) {}
+  export class ECHO extends Schema.TaggedClass<ECHO>("ECHO")("ECHO", {
+    message: Schema.String
   }) {}
   export class COMMAND extends Schema.TaggedClass<COMMAND>("COMMAND")("COMMAND", {
-    args: Schema.Array(RESP.Value)
+    args: Schema.Array(Schema.String)
   }) {}
 
   // Commands that facilitate real-time communication but don’t store data
   // (publish, subscribe, etc.)
+  export class PUBLISH extends Schema.TaggedClass<PUBLISH>("PUBLISH")("PUBLISH", {
+    channel: Schema.String,
+    message: Schema.String
+  }) {}
+  export class SUBSCRIBE extends Schema.TaggedClass<SUBSCRIBE>("SUBSCRIBE")("SUBSCRIBE", {
+    channels: Schema.Array(Schema.String)
+  }) {}
+  export class UNSUBSCRIBE extends Schema.TaggedClass<UNSUBSCRIBE>("UNSUBSCRIBE")("UNSUBSCRIBE", {
+    channels: Schema.Array(Schema.String)
+  }) {}
 }
 
 export namespace CommandTypes {
@@ -176,6 +222,11 @@ export namespace CommandTypes {
     | Commands.HDEL
     | Commands.HEXISTS
     | Commands.HGETALL
+    | Commands.SADD
+    | Commands.SREM
+    | Commands.SMEMBERS
+    | Commands.SCARD
+    | Commands.SISMEMBER
   export const Storage = Schema.Union(
     Commands.GET,
     Commands.SET,
@@ -201,7 +252,12 @@ export namespace CommandTypes {
     Commands.HGET,
     Commands.HDEL,
     Commands.HEXISTS,
-    Commands.HGETALL
+    Commands.HGETALL,
+    Commands.SADD,
+    Commands.SREM,
+    Commands.SMEMBERS,
+    Commands.SCARD,
+    Commands.SISMEMBER
   )
   export namespace StorageCommands {
     // commands that only read data (do not need to be included in the WAL)
@@ -216,6 +272,9 @@ export namespace CommandTypes {
       | Commands.HGET
       | Commands.HEXISTS
       | Commands.HGETALL
+      | Commands.SMEMBERS
+      | Commands.SCARD
+      | Commands.SISMEMBER
     export const Pure = Schema.Union(
       Commands.GET,
       Commands.EXISTS,
@@ -226,7 +285,10 @@ export namespace CommandTypes {
       Commands.LRANGE,
       Commands.HGET,
       Commands.HEXISTS,
-      Commands.HGETALL
+      Commands.HGETALL,
+      Commands.SMEMBERS,
+      Commands.SCARD,
+      Commands.SISMEMBER
     )
     // commands that modify data (must be included in the WAL)
     export type Effectful =
@@ -245,6 +307,8 @@ export namespace CommandTypes {
       | Commands.RPOP
       | Commands.HSET
       | Commands.HDEL
+      | Commands.SADD
+      | Commands.SREM
     export const Effectful = Schema.Union(
       Commands.SET,
       Commands.DEL,
@@ -260,11 +324,33 @@ export namespace CommandTypes {
       Commands.LPOP,
       Commands.RPOP,
       Commands.HSET,
-      Commands.HDEL
+      Commands.HDEL,
+      Commands.SADD,
+      Commands.SREM
     )
   }
-  export type Server = Commands.QUIT | Commands.CLIENT | Commands.COMMAND
-  export const Server = Schema.Union(Commands.QUIT, Commands.CLIENT, Commands.COMMAND)
+  export type Execution = Commands.MULTI | Commands.EXEC | Commands.DISCARD | Commands.WATCH | Commands.UNWATCH
+  export const Execution = Schema.Union(
+    Commands.MULTI,
+    Commands.EXEC,
+    Commands.DISCARD,
+    Commands.WATCH,
+    Commands.UNWATCH
+  )
+  export type Server =
+    | Commands.QUIT
+    | Commands.PING
+    | Commands.ECHO
+    | Commands.COMMAND
+  export const Server = Schema.Union(
+    Commands.QUIT,
+    Commands.PING,
+    Commands.ECHO,
+    Commands.COMMAND
+  )
+
+  export type Messaging = Commands.PUBLISH | Commands.SUBSCRIBE | Commands.UNSUBSCRIBE
+  export const Messaging = Schema.Union(Commands.PUBLISH, Commands.SUBSCRIBE, Commands.UNSUBSCRIBE)
 }
 
 export const Command = Schema.Union(...Object.values(Commands))

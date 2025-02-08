@@ -1,5 +1,5 @@
-import type { Chunk, DateTime, Duration, HashMap, HashSet, TRef } from "effect"
-import { Data, Effect, Layer, Option, STM, TMap } from "effect"
+import type { Chunk, DateTime, Duration, HashSet } from "effect"
+import { Data, Effect, HashMap, Layer, Option, STM, TMap, TRef } from "effect"
 import type { Commands, CommandTypes } from "../Command.js"
 import { RESP } from "../RESP.js"
 import type { StorageError, StorageImpl } from "../Storage.js"
@@ -26,7 +26,7 @@ type StoredValue = Data.TaggedEnum<{
 
 const StoredValue = Data.taggedEnum<StoredValue>()
 
-type Store = TMap.TMap<string, StoredValue>
+type Store = TRef.TRef<HashMap.HashMap<string, StoredValue>>
 
 class STMBackedInMemoryStore implements StorageImpl {
   private store: Store
@@ -36,7 +36,7 @@ class STMBackedInMemoryStore implements StorageImpl {
   }
 
   static make = Effect.gen(function*() {
-    const tmap = yield* TMap.make<string, StoredValue>()
+    const tmap = yield* TRef.make(HashMap.empty<string, StoredValue>())
     return new STMBackedInMemoryStore(tmap)
   })
 
@@ -69,7 +69,7 @@ class STMBackedInMemoryStore implements StorageImpl {
 
   private GET(command: Commands.GET) {
     return STM.gen(this, function*() {
-      const value = yield* TMap.get(this.store, command.key)
+      const value = yield* TRef.get(this.store).pipe(STM.map(HashMap.get(command.key)))
       if (Option.isNone(value)) {
         return new RESP.Error({ value: "Key not found" })
       } else {
@@ -84,7 +84,10 @@ class STMBackedInMemoryStore implements StorageImpl {
 
   private SET(command: Commands.SET) {
     return STM.gen(this, function*() {
-      yield* TMap.set(this.store, command.key, StoredValue.String({ value: command.value }))
+      yield* TRef.update(
+        this.store,
+        (map) => HashMap.set(map, command.key, StoredValue.String({ value: command.value }))
+      )
       return new RESP.SimpleString({ value: "OK" })
     })
   }
