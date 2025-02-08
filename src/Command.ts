@@ -106,6 +106,32 @@ export namespace Commands {
     stop: Schema.Int
   }) {}
 
+  // Hash Commands
+
+  export class HSET extends Schema.TaggedClass<HSET>("HSET")("HSET", {
+    key: Schema.String,
+    values: Schema.Array(Schema.Tuple(Schema.String, Schema.String))
+  }) {}
+
+  export class HGET extends Schema.TaggedClass<HGET>("HGET")("HGET", {
+    key: Schema.String,
+    field: Schema.String
+  }) {}
+
+  export class HDEL extends Schema.TaggedClass<HDEL>("HDEL")("HDEL", {
+    key: Schema.String,
+    fields: Schema.Array(Schema.String)
+  }) {}
+
+  export class HEXISTS extends Schema.TaggedClass<HEXISTS>("HEXISTS")("HEXISTS", {
+    key: Schema.String,
+    field: Schema.String
+  }) {}
+
+  export class HGETALL extends Schema.TaggedClass<HGETALL>("HGETALL")("HGETALL", {
+    key: Schema.String
+  }) {}
+
   // commands that modify how commands are executed
   // (multi, exec, watch, discard, etc.)
 
@@ -145,6 +171,11 @@ export namespace CommandTypes {
     | Commands.RPOP
     | Commands.LLEN
     | Commands.LRANGE
+    | Commands.HSET
+    | Commands.HGET
+    | Commands.HDEL
+    | Commands.HEXISTS
+    | Commands.HGETALL
   export const Storage = Schema.Union(
     Commands.GET,
     Commands.SET,
@@ -165,7 +196,12 @@ export namespace CommandTypes {
     Commands.LPOP,
     Commands.RPOP,
     Commands.LLEN,
-    Commands.LRANGE
+    Commands.LRANGE,
+    Commands.HSET,
+    Commands.HGET,
+    Commands.HDEL,
+    Commands.HEXISTS,
+    Commands.HGETALL
   )
   export namespace StorageCommands {
     // commands that only read data (do not need to be included in the WAL)
@@ -177,6 +213,9 @@ export namespace CommandTypes {
       | Commands.STRLEN
       | Commands.LLEN
       | Commands.LRANGE
+      | Commands.HGET
+      | Commands.HEXISTS
+      | Commands.HGETALL
     export const Pure = Schema.Union(
       Commands.GET,
       Commands.EXISTS,
@@ -184,7 +223,10 @@ export namespace CommandTypes {
       Commands.TYPE,
       Commands.STRLEN,
       Commands.LLEN,
-      Commands.LRANGE
+      Commands.LRANGE,
+      Commands.HGET,
+      Commands.HEXISTS,
+      Commands.HGETALL
     )
     // commands that modify data (must be included in the WAL)
     export type Effectful =
@@ -201,6 +243,8 @@ export namespace CommandTypes {
       | Commands.RPUSH
       | Commands.LPOP
       | Commands.RPOP
+      | Commands.HSET
+      | Commands.HDEL
     export const Effectful = Schema.Union(
       Commands.SET,
       Commands.DEL,
@@ -214,7 +258,9 @@ export namespace CommandTypes {
       Commands.LPUSH,
       Commands.RPUSH,
       Commands.LPOP,
-      Commands.RPOP
+      Commands.RPOP,
+      Commands.HSET,
+      Commands.HDEL
     )
   }
   export type Server = Commands.QUIT | Commands.CLIENT | Commands.COMMAND
