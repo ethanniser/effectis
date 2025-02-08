@@ -75,6 +75,37 @@ export namespace Commands {
     key: Schema.String
   }) {}
 
+  // List Commands
+  export class LPUSH extends Schema.TaggedClass<LPUSH>("LPUSH")("LPUSH", {
+    key: Schema.String,
+    values: Schema.Array(Schema.String)
+  }) {}
+
+  export class RPUSH extends Schema.TaggedClass<RPUSH>("RPUSH")("RPUSH", {
+    key: Schema.String,
+    values: Schema.Array(Schema.String)
+  }) {}
+
+  export class LPOP extends Schema.TaggedClass<LPOP>("LPOP")("LPOP", {
+    key: Schema.String,
+    count: Schema.optional(Schema.Int)
+  }) {}
+
+  export class RPOP extends Schema.TaggedClass<RPOP>("RPOP")("RPOP", {
+    key: Schema.String,
+    count: Schema.optional(Schema.Int)
+  }) {}
+
+  export class LLEN extends Schema.TaggedClass<LLEN>("LLEN")("LLEN", {
+    key: Schema.String
+  }) {}
+
+  export class LRANGE extends Schema.TaggedClass<LRANGE>("LRANGE")("LRANGE", {
+    key: Schema.String,
+    start: Schema.Int,
+    stop: Schema.Int
+  }) {}
+
   // commands that modify how commands are executed
   // (multi, exec, watch, discard, etc.)
 
@@ -108,6 +139,12 @@ export namespace CommandTypes {
     | Commands.INCRBY
     | Commands.DECRBY
     | Commands.STRLEN
+    | Commands.LPUSH
+    | Commands.RPUSH
+    | Commands.LPOP
+    | Commands.RPOP
+    | Commands.LLEN
+    | Commands.LRANGE
   export const Storage = Schema.Union(
     Commands.GET,
     Commands.SET,
@@ -122,7 +159,13 @@ export namespace CommandTypes {
     Commands.DECR,
     Commands.INCRBY,
     Commands.DECRBY,
-    Commands.STRLEN
+    Commands.STRLEN,
+    Commands.LPUSH,
+    Commands.RPUSH,
+    Commands.LPOP,
+    Commands.RPOP,
+    Commands.LLEN,
+    Commands.LRANGE
   )
   export namespace StorageCommands {
     // commands that only read data (do not need to be included in the WAL)
@@ -132,12 +175,16 @@ export namespace CommandTypes {
       | Commands.TTL
       | Commands.TYPE
       | Commands.STRLEN
+      | Commands.LLEN
+      | Commands.LRANGE
     export const Pure = Schema.Union(
       Commands.GET,
       Commands.EXISTS,
       Commands.TTL,
       Commands.TYPE,
-      Commands.STRLEN
+      Commands.STRLEN,
+      Commands.LLEN,
+      Commands.LRANGE
     )
     // commands that modify data (must be included in the WAL)
     export type Effectful =
@@ -150,6 +197,10 @@ export namespace CommandTypes {
       | Commands.DECR
       | Commands.INCRBY
       | Commands.DECRBY
+      | Commands.LPUSH
+      | Commands.RPUSH
+      | Commands.LPOP
+      | Commands.RPOP
     export const Effectful = Schema.Union(
       Commands.SET,
       Commands.DEL,
@@ -159,7 +210,11 @@ export namespace CommandTypes {
       Commands.INCR,
       Commands.DECR,
       Commands.INCRBY,
-      Commands.DECRBY
+      Commands.DECRBY,
+      Commands.LPUSH,
+      Commands.RPUSH,
+      Commands.LPOP,
+      Commands.RPOP
     )
   }
   export type Server = Commands.QUIT | Commands.CLIENT | Commands.COMMAND
