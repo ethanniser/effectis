@@ -22,7 +22,7 @@ log and flush peristence
 ### Basic
 
 - [ ] `SET`
-  - [ ] `SET key value`
+  - [x] `SET key value`
   - [ ] `SET key value EX seconds`
   - [ ] `SET key value PX milliseconds`
   - [ ] `SET key value NX`
@@ -31,7 +31,7 @@ log and flush peristence
   - [ ] `SET key value PX milliseconds NX`
   - [ ] `SET key value EX seconds XX`
   - [ ] `SET key value PX milliseconds XX`
-- [ ] `GET`
+- [x] `GET key`
 - [ ] `DEL`
   - [ ] `DEL key`
   - [ ] `DEL key1 key2 ... keyN`
@@ -44,20 +44,18 @@ log and flush peristence
   - [ ] `EXPIRE key seconds XX`
   - [ ] `EXPIRE key seconds GT`
   - [ ] `EXPIRE key seconds LT`
-- [ ] `TTL`
-- [ ] `PERSIST`
-- [ ] `TYPE`
+- [ ] `TTL key`
+- [ ] `PERSIST key`
+- [ ] `TYPE key`
 
 ### String
 
-- [ ] `APPEND`
-- [ ] `INCR`
-- [ ] `DECR`
-- [ ] `INCRBY`
-  - [ ] `INCRBY key increment`
-- [ ] `DECRBY`
-  - [ ] `DECRBY key decrement`
-- [ ] `STRLEN`
+- [ ] `APPEND key value`
+- [ ] `INCR key`
+- [ ] `DECR key`
+- [ ] `INCRBY key increment`
+- [ ] `DECRBY key decrement`
+- [ ] `STRLEN key`
 
 ### List
 
@@ -73,7 +71,7 @@ log and flush peristence
 - [ ] `RPOP`
   - [ ] `RPOP key`
   - [ ] `RPOP key count`
-- [ ] `LLEN`
+- [ ] `LLEN key`
 - [ ] `LRANGE`
   - [ ] `LRANGE key start stop`
 
@@ -82,12 +80,12 @@ log and flush peristence
 - [ ] `HSET`
   - [ ] `HSET key field value`
   - [ ] `HSET key field1 value1 field2 value2 ... fieldN valueN`
-- [ ] `HGET`
+- [ ] `HGET key field`
 - [ ] `HDEL`
   - [ ] `HDEL key field`
   - [ ] `HDEL key field1 field2 ... fieldN`
-- [ ] `HEXISTS`
-- [ ] `HGETALL`
+- [ ] `HEXISTS key field`
+- [ ] `HGETALL key`
 
 ### Set
 
@@ -97,16 +95,16 @@ log and flush peristence
 - [ ] `SREM`
   - [ ] `SREM key value`
   - [ ] `SREM key value1 value2 ... valueN`
-- [ ] `SMEMBERS`
-- [ ] `SCARD`
-- [ ] `SISMEMBER`
+- [ ] `SMEMBERS key`
+- [ ] `SCARD key`
+- [ ] `SISMEMBER key value`
 
 ### Server
 
 - [ ] `PING`
   - [ ] `PING`
   - [ ] `PING message`
-- [ ] `ECHO`
+- [ ] `ECHO message`
 - [ ] `FLUSHALL`
   - [ ] `FLUSHALL`
   - [ ] `FLUSHALL ASYNC`

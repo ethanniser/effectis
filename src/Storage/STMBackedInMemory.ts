@@ -1,4 +1,4 @@
-import type { DateTime, Duration, TArray, TSet } from "effect"
+import type { Chunk, DateTime, Duration, HashMap, HashSet, TRef } from "effect"
 import { Data, Effect, Layer, Option, STM, TMap } from "effect"
 import type { Commands, CommandTypes } from "../Command.js"
 import { RESP } from "../RESP.js"
@@ -6,6 +6,8 @@ import type { StorageError, StorageImpl } from "../Storage.js"
 import { Storage } from "../Storage.js"
 
 // background cleanup fiber to remove expired keys
+// store time for this in FiberRef
+
 // because js is single threaded, well never have an inconsistent state
 // however within an effect (the run command function) any effect can be a yield point
 // hence we need more machinery to do concurrent transactions
@@ -16,9 +18,10 @@ type Expiration = {
 }
 
 type StoredValue = Data.TaggedEnum<{
-  String: { value: string; expiration?: Expiration }
-  List: { value: TArray.TArray<string>; expiration?: Expiration }
-  Set: { value: TSet.TSet<string>; expiration?: Expiration }
+  String: { value: string } & { expiration?: Expiration }
+  List: { value: TRef.TRef<Chunk.Chunk<string>> } & { expiration?: Expiration }
+  Hash: { value: TRef.TRef<HashMap.HashMap<string, string>> } & { expiration?: Expiration }
+  Set: { value: TRef.TRef<HashSet.HashSet<string>> } & { expiration?: Expiration }
 }>
 
 const StoredValue = Data.taggedEnum<StoredValue>()

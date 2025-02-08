@@ -8,15 +8,42 @@ export namespace Commands {
   // commands related to storage
   // (set, get, del, exists, type, etc.)
 
-  // commands that only read data (do not need to be included in the WAL)
+  // Basic Commands
+  export class SET extends Schema.TaggedClass<SET>("SET")("SET", {
+    key: Schema.String,
+    value: Schema.String,
+    expiration: Schema.optional(Schema.DurationFromSelf),
+    mode: Schema.optional(Schema.Literal("NX", "XX"))
+  }) {}
+
   export class GET extends Schema.TaggedClass<GET>("GET")("GET", {
     key: Schema.String
   }) {}
 
-  // commands that modify data (must be included in the WAL)
-  export class SET extends Schema.TaggedClass<SET>("SET")("SET", {
+  export class DEL extends Schema.TaggedClass<DEL>("DEL")("DEL", {
+    keys: Schema.Array(Schema.String)
+  }) {}
+
+  export class EXISTS extends Schema.TaggedClass<EXISTS>("EXISTS")("EXISTS", {
+    keys: Schema.Array(Schema.String)
+  }) {}
+
+  export class EXPIRE extends Schema.TaggedClass<EXPIRE>("EXPIRE")("EXPIRE", {
     key: Schema.String,
-    value: Schema.String
+    duration: Schema.DurationFromSelf,
+    mode: Schema.optional(Schema.Literal("NX", "XX", "GT", "LT"))
+  }) {}
+
+  export class TTL extends Schema.TaggedClass<TTL>("TTL")("TTL", {
+    key: Schema.String
+  }) {}
+
+  export class PERSIST extends Schema.TaggedClass<PERSIST>("PERSIST")("PERSIST", {
+    key: Schema.String
+  }) {}
+
+  export class TYPE extends Schema.TaggedClass<TYPE>("TYPE")("TYPE", {
+    key: Schema.String
   }) {}
 
   // commands that modify how commands are executed
@@ -40,8 +67,10 @@ export namespace CommandTypes {
   export type Storage = Commands.GET | Commands.SET
   export const Storage = Schema.Union(Commands.GET, Commands.SET)
   export namespace StorageCommands {
+    // commands that only read data (do not need to be included in the WAL)
     export type Pure = Commands.GET
     export const Pure = Schema.Union(Commands.GET)
+    // commands that modify data (must be included in the WAL)
     export type Effectful = Commands.SET
     export const Effectful = Schema.Union(Commands.SET)
   }
@@ -61,6 +90,8 @@ export const CommandFromRESP = pipe(
           return yield* Effect.fail(new ParseResult.Type(ast, value, "Command expected at least one argument"))
         }
 
+        // I dont love this but we want the validation
+        // if just use constructors type issues and throws idk
         return yield* Match.value(value[0].value).pipe(
           Match.when(
             "SET",
