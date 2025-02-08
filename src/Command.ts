@@ -1,4 +1,4 @@
-import { Effect, Match, ParseResult, pipe, Schema } from "effect"
+import { Effect, ParseResult, pipe, Schema } from "effect"
 import { RESP } from "./RESP.js"
 
 // commands schould be serializable for WAL purposes
@@ -379,7 +379,7 @@ function chunkPairs<T>(arr: Array<T>): Array<[T, T]> {
 
 export const CommandFromRESP = pipe(
   Schema.compose(RESP.Value, RESP.Array),
-  Schema.transformOrFail(Command, {
+  Schema.transformOrFail(Schema.typeSchema(Command), {
     decode: ({ value }, _, ast) =>
       Effect.gen(function*() {
         if (value === null) {
@@ -555,20 +555,20 @@ export const CommandFromRESP = pipe(
               value: args[1]
             }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
           case "MULTI":
-            return Effect.succeed(new Commands.MULTI())
+            return yield* Effect.succeed(new Commands.MULTI())
           case "EXEC":
-            return Effect.succeed(new Commands.EXEC())
+            return yield* Effect.succeed(new Commands.EXEC())
           case "DISCARD":
-            return Effect.succeed(new Commands.DISCARD())
+            return yield* Effect.succeed(new Commands.DISCARD())
           case "WATCH":
             return yield* Schema.decode(Commands.WATCH)({
               _tag: "WATCH",
               keys: args
             }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
           case "UNWATCH":
-            return Effect.succeed(new Commands.UNWATCH())
+            return yield* Effect.succeed(new Commands.UNWATCH())
           case "QUIT":
-            return Effect.succeed(new Commands.QUIT())
+            return yield* Effect.succeed(new Commands.QUIT())
           case "PING":
             return yield* Schema.decode(Commands.PING)({
               _tag: "PING",
@@ -604,34 +604,7 @@ export const CommandFromRESP = pipe(
             return yield* Effect.fail(new ParseResult.Type(ast, command, "Unknown command"))
         }
       }),
-    encode: (command) =>
-      Effect.gen(function*() {
-        const values = Match.value(command).pipe(
-          Match.when(
-            { _tag: "SET" },
-            (
-              command
-            ) => [
-              new RESP.BulkString({ value: command._tag }),
-              new RESP.BulkString({ value: command.key }),
-              new RESP.BulkString({ value: command.value })
-            ]
-          ),
-          Match.when(
-            { _tag: "GET" },
-            (
-              command
-            ) => [
-              new RESP.BulkString({ value: command._tag }),
-              new RESP.BulkString({ value: command.key })
-            ]
-          ),
-          Match.orElseAbsurd
-        )
-
-        return new RESP.Array({ value: values })
-      }),
-    strict: false
+    encode: (command, _, ast) => Effect.fail(new ParseResult.Forbidden(ast, command, "TODO"))
   })
 )
 
