@@ -46,6 +46,35 @@ export namespace Commands {
     key: Schema.String
   }) {}
 
+  // String Commands
+
+  export class APPEND extends Schema.TaggedClass<APPEND>("APPEND")("APPEND", {
+    key: Schema.String,
+    value: Schema.String
+  }) {}
+
+  export class INCR extends Schema.TaggedClass<INCR>("INCR")("INCR", {
+    key: Schema.String
+  }) {}
+
+  export class DECR extends Schema.TaggedClass<DECR>("DECR")("DECR", {
+    key: Schema.String
+  }) {}
+
+  export class INCRBY extends Schema.TaggedClass<INCRBY>("INCRBY")("INCRBY", {
+    key: Schema.String,
+    increment: Schema.Int
+  }) {}
+
+  export class DECRBY extends Schema.TaggedClass<DECRBY>("DECRBY")("DECRBY", {
+    key: Schema.String,
+    decrement: Schema.Int
+  }) {}
+
+  export class STRLEN extends Schema.TaggedClass<STRLEN>("STRLEN")("STRLEN", {
+    key: Schema.String
+  }) {}
+
   // commands that modify how commands are executed
   // (multi, exec, watch, discard, etc.)
 
@@ -64,15 +93,74 @@ export namespace Commands {
 }
 
 export namespace CommandTypes {
-  export type Storage = Commands.GET | Commands.SET
-  export const Storage = Schema.Union(Commands.GET, Commands.SET)
+  export type Storage =
+    | Commands.GET
+    | Commands.SET
+    | Commands.DEL
+    | Commands.EXISTS
+    | Commands.EXPIRE
+    | Commands.TTL
+    | Commands.PERSIST
+    | Commands.TYPE
+    | Commands.APPEND
+    | Commands.INCR
+    | Commands.DECR
+    | Commands.INCRBY
+    | Commands.DECRBY
+    | Commands.STRLEN
+  export const Storage = Schema.Union(
+    Commands.GET,
+    Commands.SET,
+    Commands.DEL,
+    Commands.EXISTS,
+    Commands.EXPIRE,
+    Commands.TTL,
+    Commands.PERSIST,
+    Commands.TYPE,
+    Commands.APPEND,
+    Commands.INCR,
+    Commands.DECR,
+    Commands.INCRBY,
+    Commands.DECRBY,
+    Commands.STRLEN
+  )
   export namespace StorageCommands {
     // commands that only read data (do not need to be included in the WAL)
-    export type Pure = Commands.GET
-    export const Pure = Schema.Union(Commands.GET)
+    export type Pure =
+      | Commands.GET
+      | Commands.EXISTS
+      | Commands.TTL
+      | Commands.TYPE
+      | Commands.STRLEN
+    export const Pure = Schema.Union(
+      Commands.GET,
+      Commands.EXISTS,
+      Commands.TTL,
+      Commands.TYPE,
+      Commands.STRLEN
+    )
     // commands that modify data (must be included in the WAL)
-    export type Effectful = Commands.SET
-    export const Effectful = Schema.Union(Commands.SET)
+    export type Effectful =
+      | Commands.SET
+      | Commands.DEL
+      | Commands.EXPIRE
+      | Commands.PERSIST
+      | Commands.APPEND
+      | Commands.INCR
+      | Commands.DECR
+      | Commands.INCRBY
+      | Commands.DECRBY
+    export const Effectful = Schema.Union(
+      Commands.SET,
+      Commands.DEL,
+      Commands.EXPIRE,
+      Commands.PERSIST,
+      Commands.APPEND,
+      Commands.INCR,
+      Commands.DECR,
+      Commands.INCRBY,
+      Commands.DECRBY
+    )
   }
   export type Server = Commands.QUIT | Commands.CLIENT | Commands.COMMAND
   export const Server = Schema.Union(Commands.QUIT, Commands.CLIENT, Commands.COMMAND)
