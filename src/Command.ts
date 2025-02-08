@@ -63,12 +63,12 @@ export namespace Commands {
 
   export class INCRBY extends Schema.TaggedClass<INCRBY>("INCRBY")("INCRBY", {
     key: Schema.String,
-    increment: Schema.Int
+    increment: Schema.parseNumber(Schema.String)
   }) {}
 
   export class DECRBY extends Schema.TaggedClass<DECRBY>("DECRBY")("DECRBY", {
     key: Schema.String,
-    decrement: Schema.Int
+    decrement: Schema.parseNumber(Schema.String)
   }) {}
 
   export class STRLEN extends Schema.TaggedClass<STRLEN>("STRLEN")("STRLEN", {
@@ -88,12 +88,12 @@ export namespace Commands {
 
   export class LPOP extends Schema.TaggedClass<LPOP>("LPOP")("LPOP", {
     key: Schema.String,
-    count: Schema.optional(Schema.Int)
+    count: Schema.optional(Schema.parseNumber(Schema.String))
   }) {}
 
   export class RPOP extends Schema.TaggedClass<RPOP>("RPOP")("RPOP", {
     key: Schema.String,
-    count: Schema.optional(Schema.Int)
+    count: Schema.optional(Schema.parseNumber(Schema.String))
   }) {}
 
   export class LLEN extends Schema.TaggedClass<LLEN>("LLEN")("LLEN", {
@@ -102,8 +102,8 @@ export namespace Commands {
 
   export class LRANGE extends Schema.TaggedClass<LRANGE>("LRANGE")("LRANGE", {
     key: Schema.String,
-    start: Schema.Int,
-    stop: Schema.Int
+    start: Schema.parseNumber(Schema.String),
+    stop: Schema.parseNumber(Schema.String)
   }) {}
 
   // Hash Commands
@@ -356,57 +356,253 @@ export namespace CommandTypes {
 export const Command = Schema.Union(...Object.values(Commands))
 export type Command = Schema.Schema.Type<typeof Command>
 
+const NonNullBulkString = Schema.transformOrFail(
+  Schema.compose(RESP.Value, RESP.BulkString),
+  Schema.String,
+  {
+    encode: (value) => Effect.succeed(new RESP.BulkString({ value })),
+    decode: ({ value }, _, ast) =>
+      Effect.gen(function*() {
+        if (value === null) {
+          return yield* Effect.fail(new ParseResult.Type(ast, value, "Expected non-null string"))
+        }
+        return yield* Effect.succeed(value)
+      })
+  }
+)
+
+function chunkPairs<T>(arr: Array<T>): Array<[T, T]> {
+  return arr
+    .map((_, i) => (i % 2 === 0 ? [arr[i], arr[i + 1]] as [T, T] : null))
+    .filter((x): x is [T, T] => x !== null)
+}
+
 export const CommandFromRESP = pipe(
   Schema.compose(RESP.Value, RESP.Array),
   Schema.transformOrFail(Command, {
     decode: ({ value }, _, ast) =>
       Effect.gen(function*() {
-        if (value === null || value.length === 0) {
-          return yield* Effect.fail(new ParseResult.Type(ast, value, "Command expected at least one argument"))
+        if (value === null) {
+          return yield* Effect.fail(new ParseResult.Type(ast, value, "Expected non null array"))
         }
+        const commandArgs = yield* Schema.decode(Schema.Array(NonNullBulkString))(value).pipe(
+          Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+        )
+        const command = commandArgs[0]
+        const args = commandArgs.slice(1)
 
-        // I dont love this but we want the validation
-        // if just use constructors type issues and throws idk
-        return yield* Match.value(value[0].value).pipe(
-          Match.when(
-            "SET",
-            () =>
-              Schema.decodeUnknown(Commands.SET)({
-                _tag: "SET",
-                key: value[1].value,
-                value: value[2].value
-              })
-          ),
-          Match.when(
-            "GET",
-            () =>
-              Schema.decodeUnknown(Commands.GET)({
-                _tag: "GET",
-                key: value[1].value
-              })
-          ),
-          Match.when(
-            "QUIT",
-            () => Effect.succeed(new Commands.QUIT())
-          ),
-          Match.when(
-            "CLIENT",
-            () =>
-              Schema.decodeUnknown(Commands.CLIENT)({
-                _tag: "CLIENT",
-                args: value.slice(1)
-              })
-          ),
-          Match.when(
-            "COMMAND",
-            () =>
-              Schema.decodeUnknown(Commands.COMMAND)({
-                _tag: "COMMAND",
-                args: value.slice(1)
-              })
-          ),
-          Match.orElse(() => Effect.fail(new ParseResult.Type(ast, value[0].value, "Unknown command first argument")))
-        ).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+        switch (command) {
+          case "SET":
+            return yield* Schema.decode(Commands.SET)({
+              _tag: "SET",
+              key: args[0],
+              value: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "GET":
+            return yield* Schema.decode(Commands.GET)({
+              _tag: "GET",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "DEL":
+            return yield* Schema.decode(Commands.DEL)({
+              _tag: "DEL",
+              keys: args
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "EXISTS":
+            return yield* Schema.decode(Commands.EXISTS)({
+              _tag: "EXISTS",
+              keys: args
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "TTL":
+            return yield* Schema.decode(Commands.TTL)({
+              _tag: "TTL",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "PERSIST":
+            return yield* Schema.decode(Commands.PERSIST)({
+              _tag: "PERSIST",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "TYPE":
+            return yield* Schema.decode(Commands.TYPE)({
+              _tag: "TYPE",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "APPEND":
+            return yield* Schema.decode(Commands.APPEND)({
+              _tag: "APPEND",
+              key: args[0],
+              value: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "INCR":
+            return yield* Schema.decode(Commands.INCR)({
+              _tag: "INCR",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "DECR":
+            return yield* Schema.decode(Commands.DECR)({
+              _tag: "DECR",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "INCRBY":
+            return yield* Schema.decode(Commands.INCRBY)({
+              _tag: "INCRBY",
+              key: args[0],
+              increment: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "DECRBY":
+            return yield* Schema.decode(Commands.DECRBY)({
+              _tag: "DECRBY",
+              key: args[0],
+              decrement: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "STRLEN":
+            return yield* Schema.decode(Commands.STRLEN)({
+              _tag: "STRLEN",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "LPUSH":
+            return yield* Schema.decode(Commands.LPUSH)({
+              _tag: "LPUSH",
+              key: args[0],
+              values: args.slice(1)
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "RPUSH":
+            return yield* Schema.decode(Commands.RPUSH)({
+              _tag: "RPUSH",
+              key: args[0],
+              values: args.slice(1)
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "LPOP":
+            return yield* Schema.decode(Commands.LPOP)({
+              _tag: "LPOP",
+              key: args[0],
+              count: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "RPOP":
+            return yield* Schema.decode(Commands.RPOP)({
+              _tag: "RPOP",
+              key: args[0],
+              count: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "LLEN":
+            return yield* Schema.decode(Commands.LLEN)({
+              _tag: "LLEN",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "LRANGE":
+            return yield* Schema.decode(Commands.LRANGE)({
+              _tag: "LRANGE",
+              key: args[0],
+              start: args[1],
+              stop: args[2]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "HSET":
+            return yield* Schema.decode(Commands.HSET)({
+              _tag: "HSET",
+              key: args[0],
+              values: chunkPairs(args.slice(1))
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "HGET":
+            return yield* Schema.decode(Commands.HGET)({
+              _tag: "HGET",
+              key: args[0],
+              field: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "HDEL":
+            return yield* Schema.decode(Commands.HDEL)({
+              _tag: "HDEL",
+              key: args[0],
+              fields: args.slice(1)
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "HEXISTS":
+            return yield* Schema.decode(Commands.HEXISTS)({
+              _tag: "HEXISTS",
+              key: args[0],
+              field: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "HGETALL":
+            return yield* Schema.decode(Commands.HGETALL)({
+              _tag: "HGETALL",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "SADD":
+            return yield* Schema.decode(Commands.SADD)({
+              _tag: "SADD",
+              key: args[0],
+              values: args.slice(1)
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "SREM":
+            return yield* Schema.decode(Commands.SREM)({
+              _tag: "SREM",
+              key: args[0],
+              values: args.slice(1)
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "SMEMBERS":
+            return yield* Schema.decode(Commands.SMEMBERS)({
+              _tag: "SMEMBERS",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "SCARD":
+            return yield* Schema.decode(Commands.SCARD)({
+              _tag: "SCARD",
+              key: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "SISMEMBER":
+            return yield* Schema.decode(Commands.SISMEMBER)({
+              _tag: "SISMEMBER",
+              key: args[0],
+              value: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "MULTI":
+            return Effect.succeed(new Commands.MULTI())
+          case "EXEC":
+            return Effect.succeed(new Commands.EXEC())
+          case "DISCARD":
+            return Effect.succeed(new Commands.DISCARD())
+          case "WATCH":
+            return yield* Schema.decode(Commands.WATCH)({
+              _tag: "WATCH",
+              keys: args
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "UNWATCH":
+            return Effect.succeed(new Commands.UNWATCH())
+          case "QUIT":
+            return Effect.succeed(new Commands.QUIT())
+          case "PING":
+            return yield* Schema.decode(Commands.PING)({
+              _tag: "PING",
+              message: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "ECHO":
+            return yield* Schema.decode(Commands.ECHO)({
+              _tag: "ECHO",
+              message: args[0]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "COMMAND":
+            return yield* Schema.decode(Commands.COMMAND)({
+              _tag: "COMMAND",
+              args
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "PUBLISH":
+            return yield* Schema.decode(Commands.PUBLISH)({
+              _tag: "PUBLISH",
+              channel: args[0],
+              message: args[1]
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "SUBSCRIBE":
+            return yield* Schema.decode(Commands.SUBSCRIBE)({
+              _tag: "SUBSCRIBE",
+              channels: args
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          case "UNSUBSCRIBE":
+            return yield* Schema.decode(Commands.UNSUBSCRIBE)({
+              _tag: "UNSUBSCRIBE",
+              channels: args
+            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          default:
+            return yield* Effect.fail(new ParseResult.Type(ast, command, "Unknown command"))
+        }
       }),
     encode: (command) =>
       Effect.gen(function*() {
@@ -430,33 +626,12 @@ export const CommandFromRESP = pipe(
               new RESP.BulkString({ value: command.key })
             ]
           ),
-          Match.when(
-            { _tag: "QUIT" },
-            () => [new RESP.BulkString({ value: command._tag })]
-          ),
-          Match.when(
-            { _tag: "CLIENT" },
-            (
-              command
-            ) => [
-              new RESP.BulkString({ value: command._tag }),
-              ...command.args
-            ]
-          ),
-          Match.when(
-            { _tag: "COMMAND" },
-            (
-              command
-            ) => [
-              new RESP.BulkString({ value: command._tag }),
-              ...command.args
-            ]
-          ),
-          Match.exhaustive
+          Match.orElseAbsurd
         )
 
         return new RESP.Array({ value: values })
-      })
+      }),
+    strict: false
   })
 )
 
