@@ -21,23 +21,30 @@ const sharedServices = pipe(
   // Layer.provide(Logger.pretty)
 )
 
-const clientFromServerAddress = Layer.unwrapEffect(
-  Effect.gen(function*() {
-    const server = yield* NodeSocketServer.SocketServer
-    if (server.address._tag === "TcpAddress") {
-      return Redis.layer({ socket: { port: server.address.port, host: server.address.hostname } })
-    } else {
-      return yield* Effect.die("Expected a tcp address")
-    }
-  })
-)
-
-layer(sharedServices)("e2e", (it) => {
+// replace `sharedServices` with `Layer.empty` to run tests against a real redis server
+layer(Layer.merge(sharedServices, Redis.layer({ socket: { port: 6379, host: "localhost" } })))("e2e", (it) => {
   it.effect("basic SET and GET", () =>
     Effect.gen(function*() {
       const client = yield* Redis.Redis
       yield* client.use((client) => client.set("key", "value"))
       const result = yield* client.use((client) => client.get("key"))
       expect(result).toEqual("value")
-    }).pipe(Effect.provide(clientFromServerAddress)))
+    }))
+
+  it.effect("DEL", () =>
+    Effect.gen(function*() {
+      const client = yield* Redis.Redis
+      yield* client.use((client) => client.set("key", "value"))
+      yield* client.use((client) => client.del("key"))
+      const result = yield* client.use((client) => client.get("key"))
+      expect(result).toEqual(null)
+    }))
+
+  it.effect("EXISTS", () =>
+    Effect.gen(function*() {
+      const client = yield* Redis.Redis
+      yield* client.use((client) => client.set("key", "value"))
+      const result = yield* client.use((client) => client.exists("key"))
+      expect(result).toEqual(1)
+    }))
 })

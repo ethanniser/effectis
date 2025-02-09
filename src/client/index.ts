@@ -17,7 +17,7 @@ export const layer = (options?: Parameters<typeof createClient>[0]) =>
       const client = yield* Effect.acquireRelease(
         Effect.tryPromise({
           try: () => createClient(options).connect(),
-          catch: (e) => Effect.fail(new RedisError({ cause: e }))
+          catch: (e) => new RedisError({ cause: e })
         }),
         (client) => Effect.promise(() => client.quit())
       )
@@ -26,17 +26,17 @@ export const layer = (options?: Parameters<typeof createClient>[0]) =>
           Effect.gen(function*() {
             const result = yield* Effect.try({
               try: () => fn(client),
-              catch: (e) => Effect.fail(new RedisError({ cause: e }))
+              catch: (e) => new RedisError({ cause: e })
             })
             if (result instanceof Promise) {
               return yield* Effect.tryPromise({
                 try: () => result,
-                catch: (e) => Effect.fail(new RedisError({ cause: e }))
+                catch: (e) => new RedisError({ cause: e })
               })
             } else {
               return result
             }
-          }) as any // should be fine
+          }) // should be fine
       }
     })
   )
