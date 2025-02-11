@@ -17,6 +17,26 @@ log and flush peristence
 
 ---
 
+## NEW TODO
+
+- [ ] Get working with `redis-cli` / `npm:redis`
+  - [ ] implement `COMMAND DOCS`
+  - [ ] implement `CLIENT SETINFO`
+- [ ] implement pub/sub
+- [ ] implement transactions
+- [ ] implement persistence (these dont have to be redis compatible for now)
+  - [ ] log persistence
+  - [ ] snapshot persistence
+    - probably need to add both `Storage.loadSnapshot` and `SnapshotPersistance.loadSnapshot` and in `withSnapshotPersistance` load it on startup (also on exit)
+- [ ] build out CLI
+- [ ] implement remaining data structures / commands
+  - [ ] string
+  - [ ] hash
+  - [ ] list
+  - [ ] set
+
+---
+
 ## Commands
 
 ### Basic
