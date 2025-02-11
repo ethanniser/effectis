@@ -8,7 +8,7 @@ import { run } from "./Cli.js"
 import * as STMBackedInMemory from "./Storage/STMBackedInMemory.js"
 
 run(process.argv).pipe(
-  Effect.provide(STMBackedInMemory.layer),
+  Effect.provide(STMBackedInMemory.layer()),
   Effect.provide(NodeSocketServer.layer({ port: 6379 })),
   Effect.provide(NodeContext.layer),
   NodeRuntime.runMain()

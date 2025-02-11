@@ -1,5 +1,5 @@
 import type { Chunk, HashSet } from "effect"
-import { Data, DateTime, Duration, Effect, HashMap, Layer, Option, STM, TRef } from "effect"
+import { Data, DateTime, Duration, Effect, HashMap, Layer, Option, pipe, Schedule, STM, TRef } from "effect"
 import type { Commands, CommandTypes } from "../Command.js"
 import { RESP } from "../RESP.js"
 import type { StorageImpl } from "../Storage.js"
@@ -24,7 +24,7 @@ const StoredValue = Data.taggedEnum<StoredValue>()
 type Store = TRef.TRef<HashMap.HashMap<string, StoredValue>>
 
 class STMBackedInMemoryStore implements StorageImpl {
-  private store: Store
+  readonly store: Store
 
   constructor(store: Store) {
     this.store = store
@@ -35,26 +35,42 @@ class STMBackedInMemoryStore implements StorageImpl {
     return new STMBackedInMemoryStore(tmap)
   })
 
-  public run(command: CommandTypes.Storage): Effect.Effect<RESP.Value, StorageError> {
+  run(command: CommandTypes.Storage): Effect.Effect<RESP.Value, StorageError> {
     return Effect.gen(this, function*() {
       const now = yield* DateTime.now
+      yield* Effect.logTrace("Storage running command: ", command)
       const stm = this.processCommandToSTM(command, now)
       return yield* STM.commit(stm)
     })
   }
 
-  public runTransaction(commands: Array<CommandTypes.Storage>): Effect.Effect<Array<RESP.Value>, StorageError, never> {
+  runTransaction(commands: Array<CommandTypes.Storage>): Effect.Effect<Array<RESP.Value>, StorageError, never> {
     return Effect.gen(this, function*() {
       const now = yield* DateTime.now
+      yield* Effect.logTrace("Storage running transaction: ", commands)
       const stms = commands.map((command) => this.processCommandToSTM(command, now))
       const all = STM.all(stms)
       return yield* STM.commit(all)
     })
   }
 
-  public generateSnapshot: Effect.Effect<Uint8Array, StorageError, never> = Effect.die("Not implemented")
+  generateSnapshot: Effect.Effect<Uint8Array, StorageError, never> = Effect.die("Not implemented")
 
-  private processCommandToSTM(
+  purgeExpired: Effect.Effect<void, StorageError, never> = Effect.gen(this, function*() {
+    const now = yield* DateTime.now
+    yield* pipe(
+      this.store,
+      TRef.update((map) =>
+        HashMap.filter(
+          map,
+          (value) => Option.isSome(value.expiration) && DateTime.lessThan(now, value.expiration.value)
+        )
+      ),
+      STM.commit
+    )
+  })
+
+  processCommandToSTM(
     command: CommandTypes.Storage,
     now: DateTime.DateTime
   ): STM.STM<RESP.Value, StorageError, never> {
@@ -80,7 +96,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     }
   }
 
-  private getStore(key: string, now: DateTime.DateTime): STM.STM<Option.Option<StoredValue>> {
+  getStore(key: string, now: DateTime.DateTime): STM.STM<Option.Option<StoredValue>> {
     return STM.gen(this, function*() {
       const value = yield* TRef.get(this.store).pipe(STM.map(HashMap.get(key)))
       return Option.flatMap(value, (value) => {
@@ -98,7 +114,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     })
   }
 
-  private setStore(
+  setStore(
     key: string,
     value: StoredValue
   ): STM.STM<void> {
@@ -108,14 +124,14 @@ class STMBackedInMemoryStore implements StorageImpl {
     )
   }
 
-  private removeStore(key: string): STM.STM<void> {
+  removeStore(key: string): STM.STM<void> {
     return TRef.update(
       this.store,
       (map) => HashMap.remove(map, key)
     )
   }
 
-  private GET(command: Commands.GET, now: DateTime.DateTime) {
+  GET(command: Commands.GET, now: DateTime.DateTime) {
     return STM.gen(this, function*() {
       const value = yield* this.getStore(command.key, now)
       if (Option.isNone(value)) {
@@ -130,7 +146,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     })
   }
 
-  private SET(command: Commands.SET, now: DateTime.DateTime) {
+  SET(command: Commands.SET, now: DateTime.DateTime) {
     return STM.gen(this, function*() {
       const prev = yield* this.getStore(command.key, now)
       const expiration = Option.fromNullable(command.expiration).pipe(
@@ -160,7 +176,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     })
   }
 
-  private DEL(command: Commands.DEL) {
+  DEL(command: Commands.DEL) {
     return STM.gen(this, function*() {
       for (const key of command.keys) {
         yield* this.removeStore(key)
@@ -169,7 +185,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     })
   }
 
-  private EXISTS(command: Commands.EXISTS, now: DateTime.DateTime) {
+  EXISTS(command: Commands.EXISTS, now: DateTime.DateTime) {
     return STM.gen(this, function*() {
       let count = 0
       for (const key of command.keys) {
@@ -181,7 +197,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     })
   }
 
-  private EXPIRE(command: Commands.EXPIRE, now: DateTime.DateTime) {
+  EXPIRE(command: Commands.EXPIRE, now: DateTime.DateTime) {
     return STM.gen(this, function*() {
       const prev = yield* this.getStore(command.key, now)
       if (command.mode === "NX") {
@@ -222,7 +238,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     })
   }
 
-  private TTL(command: Commands.TTL, now: DateTime.DateTime) {
+  TTL(command: Commands.TTL, now: DateTime.DateTime) {
     return STM.gen(this, function*() {
       const prev = yield* this.getStore(command.key, now)
       if (Option.isNone(prev)) {
@@ -238,7 +254,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     })
   }
 
-  private PERSIST(command: Commands.PERSIST, now: DateTime.DateTime) {
+  PERSIST(command: Commands.PERSIST, now: DateTime.DateTime) {
     return STM.gen(this, function*() {
       const prev = yield* this.getStore(command.key, now)
       if (Option.isNone(prev)) {
@@ -249,7 +265,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     })
   }
 
-  private TYPE(command: Commands.TYPE, now: DateTime.DateTime) {
+  TYPE(command: Commands.TYPE, now: DateTime.DateTime) {
     return STM.gen(this, function*() {
       const prev = yield* this.getStore(command.key, now)
       if (Option.isNone(prev)) {
@@ -271,4 +287,24 @@ class STMBackedInMemoryStore implements StorageImpl {
   }
 }
 
-export const layer = Layer.effect(Storage, STMBackedInMemoryStore.make)
+interface STMBackedInMemoryStoreOptions {
+  expiredPurgeInterval: Duration.Duration
+}
+
+export const layer = (options: STMBackedInMemoryStoreOptions = {
+  expiredPurgeInterval: Duration.seconds(5)
+}) =>
+  Layer.scoped(
+    Storage,
+    Effect.gen(function*() {
+      const store = yield* STMBackedInMemoryStore.make
+
+      yield* pipe(
+        store.purgeExpired,
+        Effect.repeat(Schedule.spaced(options.expiredPurgeInterval)),
+        Effect.forkScoped
+      )
+
+      return store
+    })
+  )

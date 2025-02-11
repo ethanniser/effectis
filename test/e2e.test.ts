@@ -12,7 +12,7 @@ const sharedServices = pipe(
   mainLive,
   Layer.provideMerge(
     Layer.mergeAll(
-      STMBackedInMemory.layer,
+      STMBackedInMemory.layer(),
       NodeSocketServer.layer({ port: 6379 }),
       NodeContext.layer
     )
