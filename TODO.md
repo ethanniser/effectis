@@ -23,14 +23,14 @@ log and flush peristence
 
 - [x] `SET`
   - [x] `SET key value`
-  - [ ] `SET key value EX seconds`
-  - [ ] `SET key value PX milliseconds`
-  - [ ] `SET key value NX`
-  - [ ] `SET key value XX`
-  - [ ] `SET key value EX seconds NX`
-  - [ ] `SET key value PX milliseconds NX`
-  - [ ] `SET key value EX seconds XX`
-  - [ ] `SET key value PX milliseconds XX`
+  - [x] `SET key value EX seconds`
+  - [x] `SET key value PX milliseconds`
+  - [x] `SET key value NX`
+  - [x] `SET key value XX`
+  - [x] `SET key value EX seconds NX`
+  - [x] `SET key value PX milliseconds NX`
+  - [x] `SET key value EX seconds XX`
+  - [x] `SET key value PX milliseconds XX`
 - [x] `GET key`
 - [x] `DEL`
   - [x] `DEL key`

@@ -37,4 +37,28 @@ describe("Storage", () => {
         expect(result).toEqual(Chunk.make(new RESP.BulkString({ value: "value" })))
       }).pipe(Effect.provide(TestServices))
   )
+  it.effect(
+    "DEL",
+    () =>
+      Effect.gen(function*() {
+        const input1 = yield* Schema.encode(CommandFromRESP)(new Commands.SET({ key: "key", value: "value" }))
+        yield* runInput(input1)
+
+        const input2 = yield* Schema.encode(CommandFromRESP)(new Commands.DEL({ keys: ["key"] }))
+        const result = yield* runInput(input2)
+        expect(result).toEqual(Chunk.make(new RESP.SimpleString({ value: "OK" })))
+      }).pipe(Effect.provide(TestServices))
+  )
+  it.effect(
+    "EXISTS",
+    () =>
+      Effect.gen(function*() {
+        const input1 = yield* Schema.encode(CommandFromRESP)(new Commands.SET({ key: "key", value: "value" }))
+        yield* runInput(input1)
+
+        const input2 = yield* Schema.encode(CommandFromRESP)(new Commands.EXISTS({ keys: ["key"] }))
+        const result = yield* runInput(input2)
+        expect(result).toEqual(Chunk.make(new RESP.Integer({ value: 1 })))
+      }).pipe(Effect.provide(TestServices))
+  )
 })

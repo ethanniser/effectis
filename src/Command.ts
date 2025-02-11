@@ -392,12 +392,51 @@ export const CommandFromRESP = pipe(
         const args = commandArgs.slice(1)
 
         switch (command) {
-          case "SET":
+          case "SET": {
+            const mode = (() => {
+              if (args.length === 3) {
+                if (args[2] === "NX" || args[2] === "XX") {
+                  return args[2]
+                } else {
+                  return undefined
+                }
+              } else if (args.length === 5) {
+                if (args[4] === "NX" || args[4] === "XX") {
+                  return args[4]
+                } else {
+                  return undefined
+                }
+              } else {
+                return undefined
+              }
+            })()
+            const expiration = yield* Effect.gen(function*() {
+              if (args[2] === "EX") {
+                const seconds = yield* Schema.decode(
+                  Schema.parseNumber(Schema.String).pipe(Schema.compose(Schema.Int))
+                )(args[3]).pipe(
+                  Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+                )
+                return Duration.seconds(seconds)
+              } else if (args[2] === "PX") {
+                const milliseconds = yield* Schema.decode(
+                  Schema.parseNumber(Schema.String).pipe(Schema.compose(Schema.Int))
+                )(args[3]).pipe(
+                  Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+                )
+                return Duration.millis(milliseconds)
+              } else {
+                return undefined
+              }
+            })
             return yield* Schema.decode(Commands.SET)({
               _tag: "SET",
               key: args[0],
-              value: args[1]
+              value: args[1],
+              mode,
+              expiration
             }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          }
           case "GET":
             return yield* Schema.decode(Commands.GET)({
               _tag: "GET",
