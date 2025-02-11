@@ -15,13 +15,18 @@ const runInput = (input: RESP.Value) =>
     Stream.runCollect
   )
 
+// ! IS THE EVEN NECESSARY? OVER JUST E2E?
+// todo: probably need to run in a transaction (theoretically they could interfere with each other)
 describe("Storage", () => {
   it.effect(
     "SET",
     () =>
       Effect.gen(function*() {
-        const input = yield* Schema.encode(CommandFromRESP)(new Commands.SET({ key: "key", value: "value" }))
-        const result = yield* runInput(input)
+        const result = yield* pipe(
+          new Commands.SET({ key: "key", value: "value" }),
+          Schema.encode(CommandFromRESP),
+          Effect.andThen(runInput)
+        )
         expect(result).toEqual(Chunk.make(new RESP.SimpleString({ value: "OK" })))
       }).pipe(Effect.provide(TestServices))
   )
@@ -29,11 +34,17 @@ describe("Storage", () => {
     "SET and GET",
     () =>
       Effect.gen(function*() {
-        const input1 = yield* Schema.encode(CommandFromRESP)(new Commands.SET({ key: "key", value: "value" }))
-        yield* runInput(input1)
+        yield* pipe(
+          new Commands.SET({ key: "key", value: "value" }),
+          Schema.encode(CommandFromRESP),
+          Effect.andThen(runInput)
+        )
 
-        const input2 = yield* Schema.encode(CommandFromRESP)(new Commands.GET({ key: "key" }))
-        const result = yield* runInput(input2)
+        const result = yield* pipe(
+          new Commands.GET({ key: "key" }),
+          Schema.encode(CommandFromRESP),
+          Effect.andThen(runInput)
+        )
         expect(result).toEqual(Chunk.make(new RESP.BulkString({ value: "value" })))
       }).pipe(Effect.provide(TestServices))
   )
@@ -41,11 +52,22 @@ describe("Storage", () => {
     "DEL",
     () =>
       Effect.gen(function*() {
-        const input1 = yield* Schema.encode(CommandFromRESP)(new Commands.SET({ key: "key", value: "value" }))
-        yield* runInput(input1)
+        yield* pipe(
+          new Commands.SET({ key: "key", value: "value" }),
+          Schema.encode(CommandFromRESP),
+          Effect.andThen(runInput)
+        )
+        yield* pipe(
+          new Commands.SET({ key: "key2", value: "value2" }),
+          Schema.encode(CommandFromRESP),
+          Effect.andThen(runInput)
+        )
 
-        const input2 = yield* Schema.encode(CommandFromRESP)(new Commands.DEL({ keys: ["key"] }))
-        const result = yield* runInput(input2)
+        const result = yield* pipe(
+          new Commands.DEL({ keys: ["key", "key2"] }),
+          Schema.encode(CommandFromRESP),
+          Effect.andThen(runInput)
+        )
         expect(result).toEqual(Chunk.make(new RESP.SimpleString({ value: "OK" })))
       }).pipe(Effect.provide(TestServices))
   )
@@ -53,12 +75,23 @@ describe("Storage", () => {
     "EXISTS",
     () =>
       Effect.gen(function*() {
-        const input1 = yield* Schema.encode(CommandFromRESP)(new Commands.SET({ key: "key", value: "value" }))
-        yield* runInput(input1)
+        yield* pipe(
+          new Commands.SET({ key: "key", value: "value" }),
+          Schema.encode(CommandFromRESP),
+          Effect.andThen(runInput)
+        )
+        yield* pipe(
+          new Commands.SET({ key: "key2", value: "value2" }),
+          Schema.encode(CommandFromRESP),
+          Effect.andThen(runInput)
+        )
 
-        const input2 = yield* Schema.encode(CommandFromRESP)(new Commands.EXISTS({ keys: ["key"] }))
-        const result = yield* runInput(input2)
-        expect(result).toEqual(Chunk.make(new RESP.Integer({ value: 1 })))
+        const result = yield* pipe(
+          new Commands.EXISTS({ keys: ["key", "key2"] }),
+          Schema.encode(CommandFromRESP),
+          Effect.andThen(runInput)
+        )
+        expect(result).toEqual(Chunk.make(new RESP.Integer({ value: 2 })))
       }).pipe(Effect.provide(TestServices))
   )
 })
