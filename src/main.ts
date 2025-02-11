@@ -109,7 +109,6 @@ const processServerCommand = (input: CommandTypes.Server): Effect.Effect<RESP.Va
   Effect.gen(function*() {
     return yield* Match.value(input).pipe(
       Match.when({ _tag: "QUIT" }, () => Effect.succeed(new RESP.SimpleString({ value: "OK" }))), // ! this is wrong
-      Match.when({ _tag: "CLIENT" }, () => Effect.succeed(new RESP.SimpleString({ value: "OK" }))),
       // Match.when({ _tag: "COMMAND" }, (input) => {
       //   console.log("here", input)
       //   if (input.args[0]?.value === "DOCS") {
