@@ -118,6 +118,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     key: string,
     value: StoredValue
   ): STM.STM<void> {
+    console.log("setStore", key, value)
     return TRef.update(
       this.store,
       (map) => HashMap.set(map, key, value)
@@ -164,9 +165,9 @@ class STMBackedInMemoryStore implements StorageImpl {
         }
       } else if (command.mode === "XX") {
         if (Option.isSome(prev)) {
-          return new RESP.Error({ value: "Ok" })
-        } else {
           yield* this.setStore(command.key, StoredValue.String({ value: command.value, expiration }))
+          return new RESP.SimpleString({ value: "Ok" })
+        } else {
           return new RESP.SimpleString({ value: "OK" })
         }
       } else {

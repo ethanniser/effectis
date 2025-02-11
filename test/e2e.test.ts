@@ -23,9 +23,13 @@ const sharedServices = pipe(
       NodeContext.layer
     )
   )
+  // Layer.provide(Layer.succeedContext(DefaultServices.liveServices))
   // by default the logger is removed from the test context
   // Layer.provide(Logger.pretty)
 )
+
+// todo: hack for now
+Effect.runPromise(Layer.launch(sharedServices))
 
 const generateKey = Random.nextInt.pipe(Effect.map((i) => `redisTests:${i}`))
 
@@ -35,12 +39,15 @@ const redisServerLive = RUN_AGAINST_REAL_REDIS ? Layer.empty : sharedServices
 const redisClientLive = Redis.layer({ socket: { port: 6379, host: "localhost" } })
 
 beforeAll(async () => {
-  await Effect.runPromise(
-    Effect.gen(function*() {
-      const client = yield* Redis.Redis
-      yield* client.use((client) => client.flushAll())
-    }).pipe(Effect.provide(redisClientLive))
-  )
+  // todo: if add persistence to our implementation, we can remove this
+  if (RUN_AGAINST_REAL_REDIS) {
+    await Effect.runPromise(
+      Effect.gen(function*() {
+        const client = yield* Redis.Redis
+        yield* client.use((client) => client.flushAll())
+      }).pipe(Effect.provide(redisClientLive))
+    )
+  }
 })
 
 const sleep = (duration: Duration.DurationInput) =>
