@@ -1,4 +1,4 @@
-import { Effect, ParseResult, pipe, Schema } from "effect"
+import { Duration, Effect, ParseResult, pipe, Schema } from "effect"
 import { RESP } from "./RESP.js"
 
 // commands schould be serializable for WAL purposes
@@ -413,6 +413,12 @@ export const CommandFromRESP = pipe(
               _tag: "EXISTS",
               keys: args
             }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+          // case "EXPIRE":
+          //   return yield* Schema.decode(Commands.EXPIRE)({
+          //     _tag: "EXPIRE",
+          //     key: args[0],
+          //     duration: args[1]
+          //   }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
           case "TTL":
             return yield* Schema.decode(Commands.TTL)({
               _tag: "TTL",
@@ -604,7 +610,81 @@ export const CommandFromRESP = pipe(
             return yield* Effect.fail(new ParseResult.Type(ast, command, "Unknown command"))
         }
       }),
-    encode: (command, _, ast) => Effect.fail(new ParseResult.Forbidden(ast, command, "TODO"))
+    encode: (command, _, ast) =>
+      Effect.gen(function*() {
+        switch (command._tag) {
+          case "SET":
+            return new RESP.Array({
+              value: [
+                new RESP.SimpleString({ value: "SET" }),
+                new RESP.BulkString({ value: command.key }),
+                new RESP.BulkString({ value: command.value }),
+                ...(command.expiration
+                  ? [
+                    new RESP.BulkString({ value: "EX" }),
+                    new RESP.BulkString({ value: Duration.toSeconds(command.expiration).toString() })
+                  ]
+                  : []),
+                ...(command.mode ? [new RESP.BulkString({ value: command.mode })] : [])
+              ]
+            })
+          case "GET":
+            return new RESP.Array({
+              value: [
+                new RESP.SimpleString({ value: "GET" }),
+                new RESP.BulkString({ value: command.key })
+              ]
+            })
+          case "DEL":
+            return new RESP.Array({
+              value: [
+                new RESP.SimpleString({ value: "DEL" }),
+                ...command.keys.map((key) => new RESP.BulkString({ value: key }))
+              ]
+            })
+          case "EXISTS":
+            return new RESP.Array({
+              value: [
+                new RESP.SimpleString({ value: "EXISTS" }),
+                ...command.keys.map((key) => new RESP.BulkString({ value: key }))
+              ]
+            })
+          case "EXPIRE":
+            return new RESP.Array({
+              value: [
+                new RESP.SimpleString({ value: "EXPIRE" }),
+                new RESP.BulkString({ value: command.key }),
+                new RESP.BulkString({ value: Duration.toSeconds(command.duration).toString() }),
+                ...(command.mode ? [new RESP.BulkString({ value: command.mode })] : [])
+              ]
+            })
+          case "TTL":
+            return new RESP.Array({
+              value: [
+                new RESP.SimpleString({ value: "TTL" }),
+                new RESP.BulkString({ value: command.key })
+              ]
+            })
+          case "PERSIST":
+            return new RESP.Array({
+              value: [
+                new RESP.SimpleString({ value: "PERSIST" }),
+                new RESP.BulkString({ value: command.key })
+              ]
+            })
+          case "TYPE":
+            return new RESP.Array({
+              value: [
+                new RESP.SimpleString({ value: "TYPE" }),
+                new RESP.BulkString({ value: command.key })
+              ]
+            })
+          default:
+            return yield* Effect.fail(
+              new ParseResult.Forbidden(ast, command, `TODO: CANNOT ENCODE COMMAND: ${command._tag}`)
+            )
+        }
+      })
   })
 )
 

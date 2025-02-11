@@ -21,7 +21,7 @@ log and flush peristence
 
 ### Basic
 
-- [ ] `SET`
+- [x] `SET`
   - [x] `SET key value`
   - [ ] `SET key value EX seconds`
   - [ ] `SET key value PX milliseconds`
@@ -32,21 +32,21 @@ log and flush peristence
   - [ ] `SET key value EX seconds XX`
   - [ ] `SET key value PX milliseconds XX`
 - [x] `GET key`
-- [ ] `DEL`
-  - [ ] `DEL key`
-  - [ ] `DEL key1 key2 ... keyN`
-- [ ] `EXISTS`
-  - [ ] `EXISTS key`
-  - [ ] `EXISTS key1 key2 ... keyN`
+- [x] `DEL`
+  - [x] `DEL key`
+  - [x] `DEL key1 key2 ... keyN`
+- [x] `EXISTS`
+  - [x] `EXISTS key`
+  - [x] `EXISTS key1 key2 ... keyN`
 - [ ] `EXPIRE`
   - [ ] `EXPIRE key seconds`
   - [ ] `EXPIRE key seconds NX`
   - [ ] `EXPIRE key seconds XX`
   - [ ] `EXPIRE key seconds GT`
   - [ ] `EXPIRE key seconds LT`
-- [ ] `TTL key`
-- [ ] `PERSIST key`
-- [ ] `TYPE key`
+- [x] `TTL key`
+- [x] `PERSIST key`
+- [x] `TYPE key`
 
 ### String
 
