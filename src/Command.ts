@@ -616,7 +616,7 @@ export const CommandFromRESP = pipe(
           case "SET":
             return new RESP.Array({
               value: [
-                new RESP.SimpleString({ value: "SET" }),
+                new RESP.BulkString({ value: "SET" }),
                 new RESP.BulkString({ value: command.key }),
                 new RESP.BulkString({ value: command.value }),
                 ...(command.expiration
@@ -631,28 +631,28 @@ export const CommandFromRESP = pipe(
           case "GET":
             return new RESP.Array({
               value: [
-                new RESP.SimpleString({ value: "GET" }),
+                new RESP.BulkString({ value: "GET" }),
                 new RESP.BulkString({ value: command.key })
               ]
             })
           case "DEL":
             return new RESP.Array({
               value: [
-                new RESP.SimpleString({ value: "DEL" }),
+                new RESP.BulkString({ value: "DEL" }),
                 ...command.keys.map((key) => new RESP.BulkString({ value: key }))
               ]
             })
           case "EXISTS":
             return new RESP.Array({
               value: [
-                new RESP.SimpleString({ value: "EXISTS" }),
+                new RESP.BulkString({ value: "EXISTS" }),
                 ...command.keys.map((key) => new RESP.BulkString({ value: key }))
               ]
             })
           case "EXPIRE":
             return new RESP.Array({
               value: [
-                new RESP.SimpleString({ value: "EXPIRE" }),
+                new RESP.BulkString({ value: "EXPIRE" }),
                 new RESP.BulkString({ value: command.key }),
                 new RESP.BulkString({ value: Duration.toSeconds(command.duration).toString() }),
                 ...(command.mode ? [new RESP.BulkString({ value: command.mode })] : [])
@@ -661,21 +661,21 @@ export const CommandFromRESP = pipe(
           case "TTL":
             return new RESP.Array({
               value: [
-                new RESP.SimpleString({ value: "TTL" }),
+                new RESP.BulkString({ value: "TTL" }),
                 new RESP.BulkString({ value: command.key })
               ]
             })
           case "PERSIST":
             return new RESP.Array({
               value: [
-                new RESP.SimpleString({ value: "PERSIST" }),
+                new RESP.BulkString({ value: "PERSIST" }),
                 new RESP.BulkString({ value: command.key })
               ]
             })
           case "TYPE":
             return new RESP.Array({
               value: [
-                new RESP.SimpleString({ value: "TYPE" }),
+                new RESP.BulkString({ value: "TYPE" }),
                 new RESP.BulkString({ value: command.key })
               ]
             })

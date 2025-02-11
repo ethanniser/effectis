@@ -6,7 +6,7 @@ import { processRESP } from "../src/main.js"
 import { RESP } from "../src/RESP.js"
 import * as STMBackedInMemory from "../src/Storage/STMBackedInMemory.js"
 
-const TestServices = Layer.merge(STMBackedInMemory.layer, NodeContext.layer)
+const TestServices = Layer.merge(STMBackedInMemory.layer(), NodeContext.layer)
 
 const runInput = (input: RESP.Value) =>
   pipe(
