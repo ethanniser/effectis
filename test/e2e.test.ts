@@ -138,5 +138,25 @@ layer(Layer.mergeAll(redisServerLive, redisClientLive), {})(
         const result = yield* client.use((client) => client.type(key))
         expect(result).toEqual("string")
       }))
+
+    it.effect("MULTI", () =>
+      Effect.gen(function*() {
+        const client = yield* Redis.Redis
+        const [key1, key2] = yield* Effect.all([generateKey, generateKey])
+        const results = yield* client.use((client) =>
+          client.multi()
+            .set(key1, "value")
+            .set(key2, "value2")
+            .get(key1)
+            .get(key2)
+            .exec()
+        )
+        expect(results).toEqual([
+          "OK",
+          "OK",
+          "value",
+          "value2"
+        ])
+      }))
   }
 )
