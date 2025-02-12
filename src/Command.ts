@@ -429,22 +429,22 @@ export const CommandFromRESP = pipe(
               if (args[2] === "EX") {
                 const seconds = yield* Schema.decode(
                   Schema.parseNumber(Schema.String).pipe(Schema.compose(Schema.Int))
-                )(args[3]).pipe(
-                  Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
-                )
+                )(args[3])
                 return Duration.seconds(seconds)
               } else if (args[2] === "PX") {
                 const milliseconds = yield* Schema.decode(
                   Schema.parseNumber(Schema.String).pipe(Schema.compose(Schema.Int))
-                )(args[3]).pipe(
-                  Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
-                )
+                )(args[3])
                 return Duration.millis(milliseconds)
               } else {
                 return undefined
               }
-            })
-            return yield* Schema.decode(Schema.typeSchema(Commands.SET))({
+            }).pipe(
+              Effect.flatMap(Schema.encode(Schema.Union(Schema.Undefined, Schema.Duration))),
+              // ? no clue why this is needed and `typeSchema` doesnt work below but idk
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            )
+            return yield* Schema.decode(Commands.SET)({
               _tag: "SET",
               key: args[0],
               value: args[1],
