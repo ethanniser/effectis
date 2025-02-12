@@ -23,11 +23,12 @@ log and flush peristence
   - [ ] implement `COMMAND DOCS`
   - [ ] implement `CLIENT SETINFO`
 - [ ] implement pub/sub
-- [ ] implement transactions
+- [x] implement transactions
 - [ ] implement persistence (these dont have to be redis compatible for now)
   - [x] log persistence (untested)
   - [ ] snapshot persistence (skeleton but not implemented)
 - [ ] build out CLI
+- [ ] clean up error handling
 - [ ] implement remaining data structures / commands
   - [ ] string
   - [ ] hash

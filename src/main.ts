@@ -5,7 +5,7 @@ import { Channel, Effect, Either, identity, Match, Option, pipe, Schema, Stream 
 import { type Command, CommandFromRESP, CommandTypes } from "./Command.js"
 import { RESP } from "./RESP.js"
 import { Storage } from "./Storage.js"
-import * as Tx from "./transaction.js"
+import * as Tx from "./Transaction.js"
 
 type RedisEffectError = unknown
 type RedisServices = Storage | FileSystem.FileSystem
