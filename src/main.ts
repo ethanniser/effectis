@@ -94,39 +94,51 @@ const parseCommands = (
 const runCommand = (input: Command): Effect.Effect<RESP.Value, RedisEffectError, RedisServices> =>
   Effect.gen(function*() {
     if (Schema.is(CommandTypes.Storage)(input)) {
-      const storage = yield* Storage
-      const result = yield* storage.run(input)
-      return result
+      if (yield* Tx.isRunningTransaction) {
+        yield* Tx.appendToCurrentTransaction(input)
+        return new RESP.SimpleString({ value: "QUEUED" })
+      } else {
+        const storage = yield* Storage
+        const result = yield* storage.run(input)
+        return result
+      }
     } else if (Schema.is(CommandTypes.Server)(input)) {
       return yield* processServerCommand(input)
     } else if (Schema.is(CommandTypes.Messaging)(input)) {
       return defaultNonErrorUnknownResponse
     } else if (Schema.is(CommandTypes.Execution)(input)) {
-      switch (input._tag) {
-        case "MULTI": {
-          yield* Tx.startTransaction
-          return new RESP.SimpleString({ value: "OK" })
-        }
-        case "EXEC": {
-          const results = yield* Tx.executeCurrentTransaction
-          return new RESP.Array({ value: results })
-        }
-        case "DISCARD": {
-          yield* Tx.abortCurrentTransaction
-          return new RESP.SimpleString({ value: "OK" })
-        }
-        case "WATCH": {
-          return defaultNonErrorUnknownResponse
-        }
-        case "UNWATCH": {
-          return defaultNonErrorUnknownResponse
-        }
-        default: {
-          return defaultNonErrorUnknownResponse
-        }
-      }
+      return yield* processExecutionCommand(input)
     } else {
       return defaultNonErrorUnknownResponse
+    }
+  })
+
+const processExecutionCommand = (
+  input: CommandTypes.Execution
+): Effect.Effect<RESP.Value, RedisEffectError, RedisServices> =>
+  Effect.gen(function*() {
+    switch (input._tag) {
+      case "MULTI": {
+        yield* Tx.startTransaction
+        return new RESP.SimpleString({ value: "OK" })
+      }
+      case "EXEC": {
+        const results = yield* Tx.executeCurrentTransaction
+        return new RESP.Array({ value: results })
+      }
+      case "DISCARD": {
+        yield* Tx.abortCurrentTransaction
+        return new RESP.SimpleString({ value: "OK" })
+      }
+      case "WATCH": {
+        return defaultNonErrorUnknownResponse
+      }
+      case "UNWATCH": {
+        return defaultNonErrorUnknownResponse
+      }
+      default: {
+        return defaultNonErrorUnknownResponse
+      }
     }
   })
 
