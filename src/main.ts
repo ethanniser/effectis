@@ -43,6 +43,8 @@ const handleConnection = Effect.fn("handleConnection")(function*(socket: Socket.
   )
 }, Effect.onExit(() => Effect.logInfo("Connection closed")))
 
+// * probably need to move the pubsub stuff up here with some sequencing function- maybe stream.flatten?
+
 export const processRESP = (
   input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
 ): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
