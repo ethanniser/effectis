@@ -5,6 +5,7 @@ import { Channel, Effect, Either, identity, Match, Option, pipe, Schema, Stream 
 import { type Command, CommandFromRESP, CommandTypes } from "./Command.js"
 import { RESP } from "./RESP.js"
 import { Storage } from "./Storage.js"
+import * as Tx from "./transaction.js"
 
 type RedisEffectError = unknown
 type RedisServices = Storage | FileSystem.FileSystem
@@ -98,8 +99,32 @@ const runCommand = (input: Command): Effect.Effect<RESP.Value, RedisEffectError,
       return result
     } else if (Schema.is(CommandTypes.Server)(input)) {
       return yield* processServerCommand(input)
-      // } else if (Schema.is(CommandTypes.Messaging)(input)) {
-      // } else if (Schema.is(CommandTypes.Execution)(input)) {
+    } else if (Schema.is(CommandTypes.Messaging)(input)) {
+      return defaultNonErrorUnknownResponse
+    } else if (Schema.is(CommandTypes.Execution)(input)) {
+      switch (input._tag) {
+        case "MULTI": {
+          yield* Tx.startTransaction
+          return new RESP.SimpleString({ value: "OK" })
+        }
+        case "EXEC": {
+          const results = yield* Tx.executeCurrentTransaction
+          return new RESP.Array({ value: results })
+        }
+        case "DISCARD": {
+          yield* Tx.abortCurrentTransaction
+          return new RESP.SimpleString({ value: "OK" })
+        }
+        case "WATCH": {
+          return defaultNonErrorUnknownResponse
+        }
+        case "UNWATCH": {
+          return defaultNonErrorUnknownResponse
+        }
+        default: {
+          return defaultNonErrorUnknownResponse
+        }
+      }
     } else {
       return defaultNonErrorUnknownResponse
     }
