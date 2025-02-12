@@ -157,6 +157,9 @@ export namespace Commands {
     value: Schema.String
   }) {}
 
+  // global storage commands
+  export class FLUSHALL extends Schema.TaggedClass<FLUSHALL>("FLUSHALL")("FLUSHALL", {}) {}
+
   // commands that modify how commands are executed
   // (multi, exec, watch, discard, etc.)
 
@@ -170,14 +173,17 @@ export namespace Commands {
 
   // commands that configure and modify the server
   // (client, config, info, etc.)
-  export class QUIT extends Schema.TaggedClass<QUIT>("QUIT")("QUIT", {}) {}
   export class PING extends Schema.TaggedClass<PING>("PING")("PING", {
     message: Schema.optional(Schema.String)
   }) {}
   export class ECHO extends Schema.TaggedClass<ECHO>("ECHO")("ECHO", {
     message: Schema.String
   }) {}
+  export class QUIT extends Schema.TaggedClass<QUIT>("QUIT")("QUIT", {}) {}
   export class COMMAND extends Schema.TaggedClass<COMMAND>("COMMAND")("COMMAND", {
+    args: Schema.Array(Schema.String)
+  }) {}
+  export class CLIENT extends Schema.TaggedClass<CLIENT>("CLIENT")("CLIENT", {
     args: Schema.Array(Schema.String)
   }) {}
 
@@ -227,6 +233,7 @@ export namespace CommandTypes {
     | Commands.SMEMBERS
     | Commands.SCARD
     | Commands.SISMEMBER
+    | Commands.FLUSHALL
   export const Storage = Schema.Union(
     Commands.GET,
     Commands.SET,
@@ -257,7 +264,8 @@ export namespace CommandTypes {
     Commands.SREM,
     Commands.SMEMBERS,
     Commands.SCARD,
-    Commands.SISMEMBER
+    Commands.SISMEMBER,
+    Commands.FLUSHALL
   )
   export namespace StorageCommands {
     // commands that only read data (do not need to be included in the WAL)
@@ -309,6 +317,7 @@ export namespace CommandTypes {
       | Commands.HDEL
       | Commands.SADD
       | Commands.SREM
+      | Commands.FLUSHALL
     export const Effectful = Schema.Union(
       Commands.SET,
       Commands.DEL,
@@ -326,7 +335,8 @@ export namespace CommandTypes {
       Commands.HSET,
       Commands.HDEL,
       Commands.SADD,
-      Commands.SREM
+      Commands.SREM,
+      Commands.FLUSHALL
     )
   }
   export type Execution = Commands.MULTI | Commands.EXEC | Commands.DISCARD | Commands.WATCH | Commands.UNWATCH
@@ -342,11 +352,13 @@ export namespace CommandTypes {
     | Commands.PING
     | Commands.ECHO
     | Commands.COMMAND
+    | Commands.CLIENT
   export const Server = Schema.Union(
     Commands.QUIT,
     Commands.PING,
     Commands.ECHO,
-    Commands.COMMAND
+    Commands.COMMAND,
+    Commands.CLIENT
   )
 
   export type Messaging = Commands.PUBLISH | Commands.SUBSCRIBE | Commands.UNSUBSCRIBE

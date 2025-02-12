@@ -91,6 +91,8 @@ class STMBackedInMemoryStore implements StorageImpl {
         return this.PERSIST(command, now)
       case "TYPE":
         return this.TYPE(command, now)
+      case "FLUSHALL":
+        return this.FLUSHALL()
       default:
         return STM.fail(new StorageError({ message: `Storage does not support command: ${command._tag}` }))
     }
@@ -284,6 +286,13 @@ class STMBackedInMemoryStore implements StorageImpl {
         default:
           return new RESP.SimpleString({ value: "none" })
       }
+    })
+  }
+
+  FLUSHALL() {
+    return STM.gen(this, function*() {
+      yield* TRef.set(this.store, HashMap.empty<string, StoredValue>())
+      return new RESP.SimpleString({ value: "OK" })
     })
   }
 }

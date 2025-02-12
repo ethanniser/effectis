@@ -125,14 +125,12 @@ log and flush peristence
   - [ ] `PING`
   - [ ] `PING message`
 - [ ] `ECHO message`
-- [ ] `FLUSHALL`
-  - [ ] `FLUSHALL`
-  - [ ] `FLUSHALL ASYNC`
+- [ ] `QUIT`
+- [ ] `FLUSHALL` (under 'storage' category)
 - [ ] `COMMAND`
   - [ ] `COMMAND DOCS`
-- [ ] `QUIT`
 - [ ] `CLIENT`
-- [ ] `INFO`
+<!-- - [ ] `INFO` -->
 
 ### Execution
 
