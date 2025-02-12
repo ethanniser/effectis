@@ -55,6 +55,9 @@ class STMBackedInMemoryStore implements StorageImpl {
   }
 
   generateSnapshot: Effect.Effect<Uint8Array, StorageError, never> = Effect.die("Not implemented")
+  restoreFromSnapshot(_snapshot: Uint8Array): Effect.Effect<void, StorageError, never> {
+    return Effect.die("Not implemented")
+  }
 
   purgeExpired: Effect.Effect<void, StorageError, never> = Effect.gen(this, function*() {
     const now = yield* DateTime.now

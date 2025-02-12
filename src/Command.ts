@@ -12,7 +12,7 @@ export namespace Commands {
   export class SET extends Schema.TaggedClass<SET>("SET")("SET", {
     key: Schema.String,
     value: Schema.String,
-    expiration: Schema.optional(Schema.DurationFromSelf),
+    expiration: Schema.optional(Schema.Duration),
     mode: Schema.optional(Schema.Literal("NX", "XX"))
   }) {}
 
@@ -30,7 +30,7 @@ export namespace Commands {
 
   export class EXPIRE extends Schema.TaggedClass<EXPIRE>("EXPIRE")("EXPIRE", {
     key: Schema.String,
-    duration: Schema.DurationFromSelf,
+    duration: Schema.Duration,
     mode: Schema.optional(Schema.Literal("NX", "XX", "GT", "LT"))
   }) {}
 
@@ -368,6 +368,9 @@ export namespace CommandTypes {
 export const Command = Schema.Union(...Object.values(Commands))
 export type Command = Schema.Schema.Type<typeof Command>
 
+export const CommandJSON = Schema.parseJson(Command)
+export const StorageCommandJSON = Schema.parseJson(CommandTypes.StorageCommands.Effectful)
+
 const NonNullBulkString = Schema.transformOrFail(
   Schema.compose(RESP.Value, RESP.BulkString),
   Schema.String,
@@ -441,7 +444,7 @@ export const CommandFromRESP = pipe(
                 return undefined
               }
             })
-            return yield* Schema.decode(Commands.SET)({
+            return yield* Schema.decode(Schema.typeSchema(Commands.SET))({
               _tag: "SET",
               key: args[0],
               value: args[1],

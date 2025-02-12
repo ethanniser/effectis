@@ -40,14 +40,12 @@ const redisClientLive = Redis.layer({ socket: { port: 6379, host: "localhost" } 
 
 beforeAll(async () => {
   // todo: if add persistence to our implementation, we can remove this
-  if (RUN_AGAINST_REAL_REDIS) {
-    await Effect.runPromise(
-      Effect.gen(function*() {
-        const client = yield* Redis.Redis
-        yield* client.use((client) => client.flushAll())
-      }).pipe(Effect.provide(redisClientLive))
-    )
-  }
+  await Effect.runPromise(
+    Effect.gen(function*() {
+      const client = yield* Redis.Redis
+      yield* client.use((client) => client.flushAll())
+    }).pipe(Effect.provide(redisClientLive))
+  )
 })
 
 const sleep = (duration: Duration.DurationInput) =>

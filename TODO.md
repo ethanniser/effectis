@@ -25,9 +25,8 @@ log and flush peristence
 - [ ] implement pub/sub
 - [ ] implement transactions
 - [ ] implement persistence (these dont have to be redis compatible for now)
-  - [ ] log persistence
-  - [ ] snapshot persistence
-    - probably need to add both `Storage.loadSnapshot` and `SnapshotPersistance.loadSnapshot` and in `withSnapshotPersistance` load it on startup (also on exit)
+  - [x] log persistence (untested)
+  - [ ] snapshot persistence (skeleton but not implemented)
 - [ ] build out CLI
 - [ ] implement remaining data structures / commands
   - [ ] string
@@ -126,7 +125,7 @@ log and flush peristence
   - [ ] `PING message`
 - [ ] `ECHO message`
 - [ ] `QUIT`
-- [ ] `FLUSHALL` (under 'storage' category)
+- [x] `FLUSHALL` (under 'storage' category)
 - [ ] `COMMAND`
   - [ ] `COMMAND DOCS`
 - [ ] `CLIENT`
