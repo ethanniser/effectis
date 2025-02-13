@@ -1,5 +1,2 @@
-import { Context, FiberRef, Effect, HashSet } from "effect";
-
-const currentlySubscribedChannelsFiberRef = FiberRef.unsafeMake<
-  HashSet.HashSet<string>
->(HashSet.empty());
+import { Context, FiberRef, Effect, HashSet, Stream } from "effect";
+import { Command } from "./Command.js";
