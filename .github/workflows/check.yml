@@ -14,6 +14,16 @@ concurrency:
 permissions: {}
 
 jobs:
+  formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - run: pnpm fmt:check
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -44,7 +54,7 @@ jobs:
       - run: pnpm lint
 
   test:
-    name: Test 
+    name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

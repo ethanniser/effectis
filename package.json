@@ -18,6 +18,8 @@
     "build:ts": "tsup",
     "clean": "rimraf dist/*",
     "check": "tsc -b tsconfig.json",
+    "fmt": "prettier --write \"**/*.{ts,mjs}\"",
+    "fmt:check": "prettier --check .",
     "lint": "eslint \"**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\"",
     "lint-fix": "pnpm lint --fix",
     "test": "vitest run",

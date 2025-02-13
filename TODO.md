@@ -142,7 +142,7 @@ log and flush peristence
   - [ ] `WATCH key1 key2 ... keyN`
 - [ ] `UNWATCH`
 
-### Messaging
+### PubSub
 
 - [ ] `PUBLISH channel message`
 - [ ] `SUBSCRIBE`

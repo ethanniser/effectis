@@ -1,5 +1,5 @@
-import { Duration, Effect, ParseResult, pipe, Schema } from "effect"
-import { RESP } from "./RESP.js"
+import { Duration, Effect, ParseResult, pipe, Schema } from "effect";
+import { RESP } from "./RESP.js";
 
 // commands schould be serializable for WAL purposes
 // some way to distinguish write vs read commands (only write commands should be replayed)
@@ -13,191 +13,226 @@ export namespace Commands {
     key: Schema.String,
     value: Schema.String,
     expiration: Schema.optional(Schema.Duration),
-    mode: Schema.optional(Schema.Literal("NX", "XX"))
+    mode: Schema.optional(Schema.Literal("NX", "XX")),
   }) {}
 
   export class GET extends Schema.TaggedClass<GET>("GET")("GET", {
-    key: Schema.String
+    key: Schema.String,
   }) {}
 
   export class DEL extends Schema.TaggedClass<DEL>("DEL")("DEL", {
-    keys: Schema.Array(Schema.String)
+    keys: Schema.Array(Schema.String),
   }) {}
 
   export class EXISTS extends Schema.TaggedClass<EXISTS>("EXISTS")("EXISTS", {
-    keys: Schema.Array(Schema.String)
+    keys: Schema.Array(Schema.String),
   }) {}
 
   export class EXPIRE extends Schema.TaggedClass<EXPIRE>("EXPIRE")("EXPIRE", {
     key: Schema.String,
     duration: Schema.Duration,
-    mode: Schema.optional(Schema.Literal("NX", "XX", "GT", "LT"))
+    mode: Schema.optional(Schema.Literal("NX", "XX", "GT", "LT")),
   }) {}
 
   export class TTL extends Schema.TaggedClass<TTL>("TTL")("TTL", {
-    key: Schema.String
+    key: Schema.String,
   }) {}
 
-  export class PERSIST extends Schema.TaggedClass<PERSIST>("PERSIST")("PERSIST", {
-    key: Schema.String
-  }) {}
+  export class PERSIST extends Schema.TaggedClass<PERSIST>("PERSIST")(
+    "PERSIST",
+    {
+      key: Schema.String,
+    }
+  ) {}
 
   export class TYPE extends Schema.TaggedClass<TYPE>("TYPE")("TYPE", {
-    key: Schema.String
+    key: Schema.String,
   }) {}
 
   // String Commands
 
   export class APPEND extends Schema.TaggedClass<APPEND>("APPEND")("APPEND", {
     key: Schema.String,
-    value: Schema.String
+    value: Schema.String,
   }) {}
 
   export class INCR extends Schema.TaggedClass<INCR>("INCR")("INCR", {
-    key: Schema.String
+    key: Schema.String,
   }) {}
 
   export class DECR extends Schema.TaggedClass<DECR>("DECR")("DECR", {
-    key: Schema.String
+    key: Schema.String,
   }) {}
 
   export class INCRBY extends Schema.TaggedClass<INCRBY>("INCRBY")("INCRBY", {
     key: Schema.String,
-    increment: Schema.parseNumber(Schema.String)
+    increment: Schema.parseNumber(Schema.String),
   }) {}
 
   export class DECRBY extends Schema.TaggedClass<DECRBY>("DECRBY")("DECRBY", {
     key: Schema.String,
-    decrement: Schema.parseNumber(Schema.String)
+    decrement: Schema.parseNumber(Schema.String),
   }) {}
 
   export class STRLEN extends Schema.TaggedClass<STRLEN>("STRLEN")("STRLEN", {
-    key: Schema.String
+    key: Schema.String,
   }) {}
 
   // List Commands
   export class LPUSH extends Schema.TaggedClass<LPUSH>("LPUSH")("LPUSH", {
     key: Schema.String,
-    values: Schema.Array(Schema.String)
+    values: Schema.Array(Schema.String),
   }) {}
 
   export class RPUSH extends Schema.TaggedClass<RPUSH>("RPUSH")("RPUSH", {
     key: Schema.String,
-    values: Schema.Array(Schema.String)
+    values: Schema.Array(Schema.String),
   }) {}
 
   export class LPOP extends Schema.TaggedClass<LPOP>("LPOP")("LPOP", {
     key: Schema.String,
-    count: Schema.optional(Schema.parseNumber(Schema.String))
+    count: Schema.optional(Schema.parseNumber(Schema.String)),
   }) {}
 
   export class RPOP extends Schema.TaggedClass<RPOP>("RPOP")("RPOP", {
     key: Schema.String,
-    count: Schema.optional(Schema.parseNumber(Schema.String))
+    count: Schema.optional(Schema.parseNumber(Schema.String)),
   }) {}
 
   export class LLEN extends Schema.TaggedClass<LLEN>("LLEN")("LLEN", {
-    key: Schema.String
+    key: Schema.String,
   }) {}
 
   export class LRANGE extends Schema.TaggedClass<LRANGE>("LRANGE")("LRANGE", {
     key: Schema.String,
     start: Schema.parseNumber(Schema.String),
-    stop: Schema.parseNumber(Schema.String)
+    stop: Schema.parseNumber(Schema.String),
   }) {}
 
   // Hash Commands
 
   export class HSET extends Schema.TaggedClass<HSET>("HSET")("HSET", {
     key: Schema.String,
-    values: Schema.Array(Schema.Tuple(Schema.String, Schema.String))
+    values: Schema.Array(Schema.Tuple(Schema.String, Schema.String)),
   }) {}
 
   export class HGET extends Schema.TaggedClass<HGET>("HGET")("HGET", {
     key: Schema.String,
-    field: Schema.String
+    field: Schema.String,
   }) {}
 
   export class HDEL extends Schema.TaggedClass<HDEL>("HDEL")("HDEL", {
     key: Schema.String,
-    fields: Schema.Array(Schema.String)
+    fields: Schema.Array(Schema.String),
   }) {}
 
-  export class HEXISTS extends Schema.TaggedClass<HEXISTS>("HEXISTS")("HEXISTS", {
-    key: Schema.String,
-    field: Schema.String
-  }) {}
+  export class HEXISTS extends Schema.TaggedClass<HEXISTS>("HEXISTS")(
+    "HEXISTS",
+    {
+      key: Schema.String,
+      field: Schema.String,
+    }
+  ) {}
 
-  export class HGETALL extends Schema.TaggedClass<HGETALL>("HGETALL")("HGETALL", {
-    key: Schema.String
-  }) {}
+  export class HGETALL extends Schema.TaggedClass<HGETALL>("HGETALL")(
+    "HGETALL",
+    {
+      key: Schema.String,
+    }
+  ) {}
 
   // Set Commands
 
   export class SADD extends Schema.TaggedClass<SADD>("SADD")("SADD", {
     key: Schema.String,
-    values: Schema.Array(Schema.String)
+    values: Schema.Array(Schema.String),
   }) {}
 
   export class SREM extends Schema.TaggedClass<SREM>("SREM")("SREM", {
     key: Schema.String,
-    values: Schema.Array(Schema.String)
+    values: Schema.Array(Schema.String),
   }) {}
 
-  export class SMEMBERS extends Schema.TaggedClass<SMEMBERS>("SMEMBERS")("SMEMBERS", {
-    key: Schema.String
-  }) {}
+  export class SMEMBERS extends Schema.TaggedClass<SMEMBERS>("SMEMBERS")(
+    "SMEMBERS",
+    {
+      key: Schema.String,
+    }
+  ) {}
 
   export class SCARD extends Schema.TaggedClass<SCARD>("SCARD")("SCARD", {
-    key: Schema.String
+    key: Schema.String,
   }) {}
 
-  export class SISMEMBER extends Schema.TaggedClass<SISMEMBER>("SISMEMBER")("SISMEMBER", {
-    key: Schema.String,
-    value: Schema.String
-  }) {}
+  export class SISMEMBER extends Schema.TaggedClass<SISMEMBER>("SISMEMBER")(
+    "SISMEMBER",
+    {
+      key: Schema.String,
+      value: Schema.String,
+    }
+  ) {}
 
   // global storage commands
-  export class FLUSHALL extends Schema.TaggedClass<FLUSHALL>("FLUSHALL")("FLUSHALL", {}) {}
+  export class FLUSHALL extends Schema.TaggedClass<FLUSHALL>("FLUSHALL")(
+    "FLUSHALL",
+    {}
+  ) {}
 
   // commands that modify how commands are executed
   // (multi, exec, watch, discard, etc.)
 
   export class MULTI extends Schema.TaggedClass<MULTI>("MULTI")("MULTI", {}) {}
   export class EXEC extends Schema.TaggedClass<EXEC>("EXEC")("EXEC", {}) {}
-  export class DISCARD extends Schema.TaggedClass<DISCARD>("DISCARD")("DISCARD", {}) {}
+  export class DISCARD extends Schema.TaggedClass<DISCARD>("DISCARD")(
+    "DISCARD",
+    {}
+  ) {}
   export class WATCH extends Schema.TaggedClass<WATCH>("WATCH")("WATCH", {
-    keys: Schema.Array(Schema.String)
+    keys: Schema.Array(Schema.String),
   }) {}
-  export class UNWATCH extends Schema.TaggedClass<UNWATCH>("UNWATCH")("UNWATCH", {}) {}
+  export class UNWATCH extends Schema.TaggedClass<UNWATCH>("UNWATCH")(
+    "UNWATCH",
+    {}
+  ) {}
 
   // commands that configure and modify the server
   // (client, config, info, etc.)
   export class PING extends Schema.TaggedClass<PING>("PING")("PING", {
-    message: Schema.optional(Schema.String)
+    message: Schema.optional(Schema.String),
   }) {}
   export class ECHO extends Schema.TaggedClass<ECHO>("ECHO")("ECHO", {
-    message: Schema.String
+    message: Schema.String,
   }) {}
   export class QUIT extends Schema.TaggedClass<QUIT>("QUIT")("QUIT", {}) {}
-  export class COMMAND extends Schema.TaggedClass<COMMAND>("COMMAND")("COMMAND", {
-    args: Schema.Array(Schema.String)
-  }) {}
+  export class COMMAND extends Schema.TaggedClass<COMMAND>("COMMAND")(
+    "COMMAND",
+    {
+      args: Schema.Array(Schema.String),
+    }
+  ) {}
   export class CLIENT extends Schema.TaggedClass<CLIENT>("CLIENT")("CLIENT", {
-    args: Schema.Array(Schema.String)
+    args: Schema.Array(Schema.String),
   }) {}
 
-  // Commands that facilitate real-time communication but don’t store data
+  // PubSub commands
   // (publish, subscribe, etc.)
-  export class PUBLISH extends Schema.TaggedClass<PUBLISH>("PUBLISH")("PUBLISH", {
-    channel: Schema.String,
-    message: Schema.String
-  }) {}
-  export class SUBSCRIBE extends Schema.TaggedClass<SUBSCRIBE>("SUBSCRIBE")("SUBSCRIBE", {
-    channels: Schema.Array(Schema.String)
-  }) {}
-  export class UNSUBSCRIBE extends Schema.TaggedClass<UNSUBSCRIBE>("UNSUBSCRIBE")("UNSUBSCRIBE", {
-    channels: Schema.Array(Schema.String)
+  export class PUBLISH extends Schema.TaggedClass<PUBLISH>("PUBLISH")(
+    "PUBLISH",
+    {
+      channel: Schema.String,
+      message: Schema.String,
+    }
+  ) {}
+  export class SUBSCRIBE extends Schema.TaggedClass<SUBSCRIBE>("SUBSCRIBE")(
+    "SUBSCRIBE",
+    {
+      channels: Schema.Array(Schema.String),
+    }
+  ) {}
+  export class UNSUBSCRIBE extends Schema.TaggedClass<UNSUBSCRIBE>(
+    "UNSUBSCRIBE"
+  )("UNSUBSCRIBE", {
+    channels: Schema.Array(Schema.String),
   }) {}
 }
 
@@ -233,7 +268,7 @@ export namespace CommandTypes {
     | Commands.SMEMBERS
     | Commands.SCARD
     | Commands.SISMEMBER
-    | Commands.FLUSHALL
+    | Commands.FLUSHALL;
   export const Storage = Schema.Union(
     Commands.GET,
     Commands.SET,
@@ -266,7 +301,7 @@ export namespace CommandTypes {
     Commands.SCARD,
     Commands.SISMEMBER,
     Commands.FLUSHALL
-  )
+  );
   export namespace StorageCommands {
     // commands that only read data (do not need to be included in the WAL)
     export type Pure =
@@ -282,7 +317,7 @@ export namespace CommandTypes {
       | Commands.HGETALL
       | Commands.SMEMBERS
       | Commands.SCARD
-      | Commands.SISMEMBER
+      | Commands.SISMEMBER;
     export const Pure = Schema.Union(
       Commands.GET,
       Commands.EXISTS,
@@ -297,7 +332,7 @@ export namespace CommandTypes {
       Commands.SMEMBERS,
       Commands.SCARD,
       Commands.SISMEMBER
-    )
+    );
     // commands that modify data (must be included in the WAL)
     export type Effectful =
       | Commands.SET
@@ -317,7 +352,7 @@ export namespace CommandTypes {
       | Commands.HDEL
       | Commands.SADD
       | Commands.SREM
-      | Commands.FLUSHALL
+      | Commands.FLUSHALL;
     export const Effectful = Schema.Union(
       Commands.SET,
       Commands.DEL,
@@ -337,39 +372,53 @@ export namespace CommandTypes {
       Commands.SADD,
       Commands.SREM,
       Commands.FLUSHALL
-    )
+    );
   }
-  export type Execution = Commands.MULTI | Commands.EXEC | Commands.DISCARD | Commands.WATCH | Commands.UNWATCH
+  export type Execution =
+    | Commands.MULTI
+    | Commands.EXEC
+    | Commands.DISCARD
+    | Commands.WATCH
+    | Commands.UNWATCH;
   export const Execution = Schema.Union(
     Commands.MULTI,
     Commands.EXEC,
     Commands.DISCARD,
     Commands.WATCH,
     Commands.UNWATCH
-  )
+  );
   export type Server =
     | Commands.QUIT
     | Commands.PING
     | Commands.ECHO
     | Commands.COMMAND
-    | Commands.CLIENT
+    | Commands.CLIENT;
   export const Server = Schema.Union(
     Commands.QUIT,
     Commands.PING,
     Commands.ECHO,
     Commands.COMMAND,
     Commands.CLIENT
-  )
+  );
 
-  export type Messaging = Commands.PUBLISH | Commands.SUBSCRIBE | Commands.UNSUBSCRIBE
-  export const Messaging = Schema.Union(Commands.PUBLISH, Commands.SUBSCRIBE, Commands.UNSUBSCRIBE)
+  export type PubSub =
+    | Commands.PUBLISH
+    | Commands.SUBSCRIBE
+    | Commands.UNSUBSCRIBE;
+  export const PubSub = Schema.Union(
+    Commands.PUBLISH,
+    Commands.SUBSCRIBE,
+    Commands.UNSUBSCRIBE
+  );
 }
 
-export const Command = Schema.Union(...Object.values(Commands))
-export type Command = Schema.Schema.Type<typeof Command>
+export const Command = Schema.Union(...Object.values(Commands));
+export type Command = Schema.Schema.Type<typeof Command>;
 
-export const CommandJSON = Schema.parseJson(Command)
-export const StorageCommandJSON = Schema.parseJson(CommandTypes.StorageCommands.Effectful)
+export const CommandJSON = Schema.parseJson(Command);
+export const StorageCommandJSON = Schema.parseJson(
+  CommandTypes.StorageCommands.Effectful
+);
 
 const NonNullBulkString = Schema.transformOrFail(
   Schema.compose(RESP.Value, RESP.BulkString),
@@ -377,96 +426,116 @@ const NonNullBulkString = Schema.transformOrFail(
   {
     encode: (value) => Effect.succeed(new RESP.BulkString({ value })),
     decode: ({ value }, _, ast) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         if (value === null) {
-          return yield* Effect.fail(new ParseResult.Type(ast, value, "Expected non-null string"))
+          return yield* Effect.fail(
+            new ParseResult.Type(ast, value, "Expected non-null string")
+          );
         }
-        return yield* Effect.succeed(value)
-      })
+        return yield* Effect.succeed(value);
+      }),
   }
-)
+);
 
 function chunkPairs<T>(arr: Array<T>): Array<[T, T]> {
   return arr
-    .map((_, i) => (i % 2 === 0 ? [arr[i], arr[i + 1]] as [T, T] : null))
-    .filter((x): x is [T, T] => x !== null)
+    .map((_, i) => (i % 2 === 0 ? ([arr[i], arr[i + 1]] as [T, T]) : null))
+    .filter((x): x is [T, T] => x !== null);
 }
 
 export const CommandFromRESP = pipe(
   Schema.compose(RESP.Value, RESP.Array),
   Schema.transformOrFail(Schema.typeSchema(Command), {
     decode: ({ value }, _, ast) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         if (value === null) {
-          return yield* Effect.fail(new ParseResult.Type(ast, value, "Expected non null array"))
+          return yield* Effect.fail(
+            new ParseResult.Type(ast, value, "Expected non null array")
+          );
         }
-        const commandArgs = yield* Schema.decode(Schema.Array(NonNullBulkString))(value).pipe(
+        const commandArgs = yield* Schema.decode(
+          Schema.Array(NonNullBulkString)
+        )(value).pipe(
           Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
-        )
-        const command = commandArgs[0]
-        const args = commandArgs.slice(1)
+        );
+        const command = commandArgs[0];
+        const args = commandArgs.slice(1);
 
         switch (command) {
           case "SET": {
             const mode = (() => {
               if (args.length === 3) {
                 if (args[2] === "NX" || args[2] === "XX") {
-                  return args[2]
+                  return args[2];
                 } else {
-                  return undefined
+                  return undefined;
                 }
               } else if (args.length === 5) {
                 if (args[4] === "NX" || args[4] === "XX") {
-                  return args[4]
+                  return args[4];
                 } else {
-                  return undefined
+                  return undefined;
                 }
               } else {
-                return undefined
+                return undefined;
               }
-            })()
-            const expiration = yield* Effect.gen(function*() {
+            })();
+            const expiration = yield* Effect.gen(function* () {
               if (args[2] === "EX") {
                 const seconds = yield* Schema.decode(
-                  Schema.parseNumber(Schema.String).pipe(Schema.compose(Schema.Int))
-                )(args[3])
-                return Duration.seconds(seconds)
+                  Schema.parseNumber(Schema.String).pipe(
+                    Schema.compose(Schema.Int)
+                  )
+                )(args[3]);
+                return Duration.seconds(seconds);
               } else if (args[2] === "PX") {
                 const milliseconds = yield* Schema.decode(
-                  Schema.parseNumber(Schema.String).pipe(Schema.compose(Schema.Int))
-                )(args[3])
-                return Duration.millis(milliseconds)
+                  Schema.parseNumber(Schema.String).pipe(
+                    Schema.compose(Schema.Int)
+                  )
+                )(args[3]);
+                return Duration.millis(milliseconds);
               } else {
-                return undefined
+                return undefined;
               }
             }).pipe(
-              Effect.flatMap(Schema.encode(Schema.Union(Schema.Undefined, Schema.Duration))),
+              Effect.flatMap(
+                Schema.encode(Schema.Union(Schema.Undefined, Schema.Duration))
+              ),
               // ? no clue why this is needed and `typeSchema` doesnt work below but idk
               Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
-            )
+            );
             return yield* Schema.decode(Commands.SET)({
               _tag: "SET",
               key: args[0],
               value: args[1],
               mode,
-              expiration
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              expiration,
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           }
           case "GET":
             return yield* Schema.decode(Commands.GET)({
               _tag: "GET",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "DEL":
             return yield* Schema.decode(Commands.DEL)({
               _tag: "DEL",
-              keys: args
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              keys: args,
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "EXISTS":
             return yield* Schema.decode(Commands.EXISTS)({
               _tag: "EXISTS",
-              keys: args
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              keys: args,
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           // case "EXPIRE":
           //   return yield* Schema.decode(Commands.EXPIRE)({
           //     _tag: "EXPIRE",
@@ -476,196 +545,262 @@ export const CommandFromRESP = pipe(
           case "TTL":
             return yield* Schema.decode(Commands.TTL)({
               _tag: "TTL",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "PERSIST":
             return yield* Schema.decode(Commands.PERSIST)({
               _tag: "PERSIST",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "TYPE":
             return yield* Schema.decode(Commands.TYPE)({
               _tag: "TYPE",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "APPEND":
             return yield* Schema.decode(Commands.APPEND)({
               _tag: "APPEND",
               key: args[0],
-              value: args[1]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              value: args[1],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "INCR":
             return yield* Schema.decode(Commands.INCR)({
               _tag: "INCR",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "DECR":
             return yield* Schema.decode(Commands.DECR)({
               _tag: "DECR",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "INCRBY":
             return yield* Schema.decode(Commands.INCRBY)({
               _tag: "INCRBY",
               key: args[0],
-              increment: args[1]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              increment: args[1],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "DECRBY":
             return yield* Schema.decode(Commands.DECRBY)({
               _tag: "DECRBY",
               key: args[0],
-              decrement: args[1]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              decrement: args[1],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "STRLEN":
             return yield* Schema.decode(Commands.STRLEN)({
               _tag: "STRLEN",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "LPUSH":
             return yield* Schema.decode(Commands.LPUSH)({
               _tag: "LPUSH",
               key: args[0],
-              values: args.slice(1)
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              values: args.slice(1),
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "RPUSH":
             return yield* Schema.decode(Commands.RPUSH)({
               _tag: "RPUSH",
               key: args[0],
-              values: args.slice(1)
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              values: args.slice(1),
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "LPOP":
             return yield* Schema.decode(Commands.LPOP)({
               _tag: "LPOP",
               key: args[0],
-              count: args[1]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              count: args[1],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "RPOP":
             return yield* Schema.decode(Commands.RPOP)({
               _tag: "RPOP",
               key: args[0],
-              count: args[1]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              count: args[1],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "LLEN":
             return yield* Schema.decode(Commands.LLEN)({
               _tag: "LLEN",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "LRANGE":
             return yield* Schema.decode(Commands.LRANGE)({
               _tag: "LRANGE",
               key: args[0],
               start: args[1],
-              stop: args[2]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              stop: args[2],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "HSET":
             return yield* Schema.decode(Commands.HSET)({
               _tag: "HSET",
               key: args[0],
-              values: chunkPairs(args.slice(1))
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              values: chunkPairs(args.slice(1)),
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "HGET":
             return yield* Schema.decode(Commands.HGET)({
               _tag: "HGET",
               key: args[0],
-              field: args[1]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              field: args[1],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "HDEL":
             return yield* Schema.decode(Commands.HDEL)({
               _tag: "HDEL",
               key: args[0],
-              fields: args.slice(1)
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              fields: args.slice(1),
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "HEXISTS":
             return yield* Schema.decode(Commands.HEXISTS)({
               _tag: "HEXISTS",
               key: args[0],
-              field: args[1]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              field: args[1],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "HGETALL":
             return yield* Schema.decode(Commands.HGETALL)({
               _tag: "HGETALL",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "SADD":
             return yield* Schema.decode(Commands.SADD)({
               _tag: "SADD",
               key: args[0],
-              values: args.slice(1)
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              values: args.slice(1),
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "SREM":
             return yield* Schema.decode(Commands.SREM)({
               _tag: "SREM",
               key: args[0],
-              values: args.slice(1)
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              values: args.slice(1),
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "SMEMBERS":
             return yield* Schema.decode(Commands.SMEMBERS)({
               _tag: "SMEMBERS",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "SCARD":
             return yield* Schema.decode(Commands.SCARD)({
               _tag: "SCARD",
-              key: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              key: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "SISMEMBER":
             return yield* Schema.decode(Commands.SISMEMBER)({
               _tag: "SISMEMBER",
               key: args[0],
-              value: args[1]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              value: args[1],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "MULTI":
-            return yield* Effect.succeed(new Commands.MULTI())
+            return yield* Effect.succeed(new Commands.MULTI());
           case "EXEC":
-            return yield* Effect.succeed(new Commands.EXEC())
+            return yield* Effect.succeed(new Commands.EXEC());
           case "DISCARD":
-            return yield* Effect.succeed(new Commands.DISCARD())
+            return yield* Effect.succeed(new Commands.DISCARD());
           case "WATCH":
             return yield* Schema.decode(Commands.WATCH)({
               _tag: "WATCH",
-              keys: args
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              keys: args,
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "UNWATCH":
-            return yield* Effect.succeed(new Commands.UNWATCH())
+            return yield* Effect.succeed(new Commands.UNWATCH());
           case "QUIT":
-            return yield* Effect.succeed(new Commands.QUIT())
+            return yield* Effect.succeed(new Commands.QUIT());
           case "PING":
             return yield* Schema.decode(Commands.PING)({
               _tag: "PING",
-              message: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              message: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "ECHO":
             return yield* Schema.decode(Commands.ECHO)({
               _tag: "ECHO",
-              message: args[0]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              message: args[0],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "COMMAND":
             return yield* Schema.decode(Commands.COMMAND)({
               _tag: "COMMAND",
-              args
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              args,
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "PUBLISH":
             return yield* Schema.decode(Commands.PUBLISH)({
               _tag: "PUBLISH",
               channel: args[0],
-              message: args[1]
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              message: args[1],
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "SUBSCRIBE":
             return yield* Schema.decode(Commands.SUBSCRIBE)({
               _tag: "SUBSCRIBE",
-              channels: args
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              channels: args,
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "UNSUBSCRIBE":
             return yield* Schema.decode(Commands.UNSUBSCRIBE)({
               _tag: "UNSUBSCRIBE",
-              channels: args
-            }).pipe(Effect.catchTag("ParseError", (error) => Effect.fail(error.issue)))
+              channels: args,
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           default:
-            return yield* Effect.fail(new ParseResult.Type(ast, command, "Unknown command"))
+            return yield* Effect.fail(
+              new ParseResult.Type(ast, command, "Unknown command")
+            );
         }
       }),
     encode: (command, _, ast) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         switch (command._tag) {
           case "SET":
             return new RESP.Array({
@@ -675,72 +810,90 @@ export const CommandFromRESP = pipe(
                 new RESP.BulkString({ value: command.value }),
                 ...(command.expiration
                   ? [
-                    new RESP.BulkString({ value: "EX" }),
-                    new RESP.BulkString({ value: Duration.toSeconds(command.expiration).toString() })
-                  ]
+                      new RESP.BulkString({ value: "EX" }),
+                      new RESP.BulkString({
+                        value: Duration.toSeconds(
+                          command.expiration
+                        ).toString(),
+                      }),
+                    ]
                   : []),
-                ...(command.mode ? [new RESP.BulkString({ value: command.mode })] : [])
-              ]
-            })
+                ...(command.mode
+                  ? [new RESP.BulkString({ value: command.mode })]
+                  : []),
+              ],
+            });
           case "GET":
             return new RESP.Array({
               value: [
                 new RESP.BulkString({ value: "GET" }),
-                new RESP.BulkString({ value: command.key })
-              ]
-            })
+                new RESP.BulkString({ value: command.key }),
+              ],
+            });
           case "DEL":
             return new RESP.Array({
               value: [
                 new RESP.BulkString({ value: "DEL" }),
-                ...command.keys.map((key) => new RESP.BulkString({ value: key }))
-              ]
-            })
+                ...command.keys.map(
+                  (key) => new RESP.BulkString({ value: key })
+                ),
+              ],
+            });
           case "EXISTS":
             return new RESP.Array({
               value: [
                 new RESP.BulkString({ value: "EXISTS" }),
-                ...command.keys.map((key) => new RESP.BulkString({ value: key }))
-              ]
-            })
+                ...command.keys.map(
+                  (key) => new RESP.BulkString({ value: key })
+                ),
+              ],
+            });
           case "EXPIRE":
             return new RESP.Array({
               value: [
                 new RESP.BulkString({ value: "EXPIRE" }),
                 new RESP.BulkString({ value: command.key }),
-                new RESP.BulkString({ value: Duration.toSeconds(command.duration).toString() }),
-                ...(command.mode ? [new RESP.BulkString({ value: command.mode })] : [])
-              ]
-            })
+                new RESP.BulkString({
+                  value: Duration.toSeconds(command.duration).toString(),
+                }),
+                ...(command.mode
+                  ? [new RESP.BulkString({ value: command.mode })]
+                  : []),
+              ],
+            });
           case "TTL":
             return new RESP.Array({
               value: [
                 new RESP.BulkString({ value: "TTL" }),
-                new RESP.BulkString({ value: command.key })
-              ]
-            })
+                new RESP.BulkString({ value: command.key }),
+              ],
+            });
           case "PERSIST":
             return new RESP.Array({
               value: [
                 new RESP.BulkString({ value: "PERSIST" }),
-                new RESP.BulkString({ value: command.key })
-              ]
-            })
+                new RESP.BulkString({ value: command.key }),
+              ],
+            });
           case "TYPE":
             return new RESP.Array({
               value: [
                 new RESP.BulkString({ value: "TYPE" }),
-                new RESP.BulkString({ value: command.key })
-              ]
-            })
+                new RESP.BulkString({ value: command.key }),
+              ],
+            });
           default:
             return yield* Effect.fail(
-              new ParseResult.Forbidden(ast, command, `TODO: CANNOT ENCODE COMMAND: ${command._tag}`)
-            )
+              new ParseResult.Forbidden(
+                ast,
+                command,
+                `TODO: CANNOT ENCODE COMMAND: ${command._tag}`
+              )
+            );
         }
-      })
+      }),
   })
-)
+);
 
 // const supportedCommands = Object.keys(Commands)
 // const returnedKeys = ["summary", "since", "group", "complexity", "arguments"]
