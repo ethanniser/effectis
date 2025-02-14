@@ -179,9 +179,11 @@ layer(Layer.mergeAll(redisServerLive, redisClientLive), {})("e2e", (it) => {
       const channel1Messages = yield* Queue.unbounded<string>();
       const channel2Messages = yield* Queue.unbounded<string>();
 
-      const latch1 = yield* Effect.makeLatch();
-      const latch2 = yield* Effect.makeLatch();
-      const latch3 = yield* Effect.makeLatch();
+      const subscriptionOpen = yield* Effect.makeLatch();
+      const firstSendDone = yield* Effect.makeLatch();
+      const firstUnsubscribeDone = yield* Effect.makeLatch();
+      const secondSendDone = yield* Effect.makeLatch();
+      const allDone = yield* Effect.makeLatch();
       yield* pipe(
         Effect.gen(function* () {
           const client = yield* Redis.Redis;
@@ -196,9 +198,11 @@ layer(Layer.mergeAll(redisServerLive, redisClientLive), {})("e2e", (it) => {
               }
             })
           );
-          yield* latch1.await;
+          yield* subscriptionOpen.open;
+          yield* firstSendDone.await;
           yield* client.use((client) => client.unsubscribe("one"));
-          yield* latch2.open;
+          yield* firstUnsubscribeDone.open;
+          yield* allDone.await;
         }),
         Effect.provide(
           Layer.fresh(
@@ -213,13 +217,14 @@ layer(Layer.mergeAll(redisServerLive, redisClientLive), {})("e2e", (it) => {
           const client = yield* Redis.Redis;
 
           // publish to both channels
+          yield* subscriptionOpen.await;
           yield* client.use((client) => client.publish("one", "message1"));
           yield* client.use((client) => client.publish("two", "message2"));
-          yield* latch1.open;
-          yield* latch2.await;
+          yield* firstSendDone.open;
+          yield* firstUnsubscribeDone.await;
           yield* client.use((client) => client.publish("one", "message3"));
           yield* client.use((client) => client.publish("two", "message4"));
-          yield* latch3.open;
+          yield* secondSendDone.open;
         }),
         Effect.provide(
           Layer.fresh(
@@ -229,12 +234,13 @@ layer(Layer.mergeAll(redisServerLive, redisClientLive), {})("e2e", (it) => {
         Effect.fork
       );
 
-      yield* latch1.await;
+      yield* firstSendDone.await;
       expect(yield* channel1Messages.take).toEqual("message1");
       expect(yield* channel2Messages.take).toEqual("message2");
-      yield* latch3.await;
-      expect(yield* channel1Messages.isEmpty).toEqual(true);
+      yield* secondSendDone.await;
       expect(yield* channel2Messages.take).toEqual("message4");
+      expect(yield* channel1Messages.isEmpty).toEqual(true); // we do this check after the second to make sure the first message could have been received (if the unsubscribe didn't happen)
+      yield* allDone.open;
     })
   );
 });
