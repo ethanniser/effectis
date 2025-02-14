@@ -10,7 +10,9 @@ import {
   Logger,
   LogLevel,
   pipe,
+  Queue,
   Random,
+  Runtime,
 } from "effect";
 import * as Redis from "../src/client/index.js";
 import { main } from "../src/main.js";
@@ -38,7 +40,7 @@ const sharedServices = pipe(
 );
 
 // todo: hack for now
-Effect.runPromise(Layer.launch(sharedServices));
+// Effect.runPromise(Layer.launch(sharedServices));
 
 const generateKey = Random.nextInt.pipe(Effect.map((i) => `redisTests:${i}`));
 
@@ -169,6 +171,70 @@ layer(Layer.mergeAll(redisServerLive, redisClientLive), {})("e2e", (it) => {
           .exec()
       );
       expect(results).toEqual(["OK", "OK", "value", "value2"]);
+    })
+  );
+
+  it.effect("PUB SUB", () =>
+    Effect.gen(function* () {
+      const channel1Messages = yield* Queue.unbounded<string>();
+      const channel2Messages = yield* Queue.unbounded<string>();
+
+      const latch1 = yield* Effect.makeLatch();
+      const latch2 = yield* Effect.makeLatch();
+      const latch3 = yield* Effect.makeLatch();
+      yield* pipe(
+        Effect.gen(function* () {
+          const client = yield* Redis.Redis;
+
+          // subscribe to 2 channels
+          yield* client.use((client) =>
+            client.subscribe(["one", "two"], (message, channel) => {
+              if (channel === "one") {
+                channel1Messages.unsafeOffer(message);
+              } else if (channel === "two") {
+                channel2Messages.unsafeOffer(message);
+              }
+            })
+          );
+          yield* latch1.await;
+          yield* client.use((client) => client.unsubscribe("one"));
+          yield* latch2.open;
+        }),
+        Effect.provide(
+          Layer.fresh(
+            Redis.layer({ socket: { port: 6379, host: "localhost" } })
+          )
+        ),
+        Effect.fork
+      );
+
+      yield* pipe(
+        Effect.gen(function* () {
+          const client = yield* Redis.Redis;
+
+          // publish to both channels
+          yield* client.use((client) => client.publish("one", "message1"));
+          yield* client.use((client) => client.publish("two", "message2"));
+          yield* latch1.open;
+          yield* latch2.await;
+          yield* client.use((client) => client.publish("one", "message3"));
+          yield* client.use((client) => client.publish("two", "message4"));
+          yield* latch3.open;
+        }),
+        Effect.provide(
+          Layer.fresh(
+            Redis.layer({ socket: { port: 6379, host: "localhost" } })
+          )
+        ),
+        Effect.fork
+      );
+
+      yield* latch1.await;
+      expect(yield* channel1Messages.take).toEqual("message1");
+      expect(yield* channel2Messages.take).toEqual("message2");
+      yield* latch3.await;
+      expect(yield* channel1Messages.isEmpty).toEqual(true);
+      expect(yield* channel2Messages.take).toEqual("message4");
     })
   );
 });
