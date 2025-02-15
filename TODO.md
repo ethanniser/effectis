@@ -29,7 +29,7 @@ log and flush peristence
   - [x] snapshot persistence (untested)
 - [ ] perf comparison
 - [ ] build out CLI
-- [ ] clean up error handling
+- [x] clean up error handling
 - [ ] implement remaining data structures / commands
   - [ ] string
   - [ ] hash
@@ -122,22 +122,19 @@ log and flush peristence
 
 ### Server
 
-- [ ] `PING`
-  - [ ] `PING`
-  - [ ] `PING message`
-- [ ] `ECHO message`
-- [ ] `QUIT`
+- [x] `PING`
+- [x] `ECHO message`
+- [x] `QUIT`
 - [x] `FLUSHALL` (under 'storage' category)
 - [ ] `COMMAND`
   - [ ] `COMMAND DOCS`
 - [ ] `CLIENT`
-<!-- - [ ] `INFO` -->
 
 ### Execution
 
-- [ ] `MULTI`
-- [ ] `EXEC`
-- [ ] `DISCARD`
+- [x] `MULTI`
+- [x] `EXEC`
+- [x] `DISCARD`
 - [ ] `WATCH`
   - [ ] `WATCH key`
   - [ ] `WATCH key1 key2 ... keyN`
@@ -145,11 +142,11 @@ log and flush peristence
 
 ### PubSub
 
-- [ ] `PUBLISH channel message`
-- [ ] `SUBSCRIBE`
-  - [ ] `SUBSCRIBE channel`
-  - [ ] `SUBSCRIBE channel1 channel2 ... channelN`
-- [ ] `UNSUBSCRIBE`
-  - [ ] `UNSUBSCRIBE`
-  - [ ] `UNSUBSCRIBE channel`
-  - [ ] `UNSUBSCRIBE channel1 channel2 ... channelN`
+- [x] `PUBLISH channel message`
+- [x] `SUBSCRIBE`
+  - [x] `SUBSCRIBE channel`
+  - [x] `SUBSCRIBE channel1 channel2 ... channelN`
+- [x] `UNSUBSCRIBE`
+  - [x] `UNSUBSCRIBE`
+  - [x] `UNSUBSCRIBE channel`
+  - [x] `UNSUBSCRIBE channel1 channel2 ... channelN`

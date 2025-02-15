@@ -142,10 +142,10 @@ const handleAccumEffect = (
       const result = handleServerCommand(command);
       return [state, Option.some(result)];
     } else {
+      // storage commands
       const result = handleStorageCommand(command);
       return [state, Option.some(result)];
     }
-    throw new Error("Not implemented");
   });
 
 const handlePubSubCommand = (
@@ -226,6 +226,18 @@ const handlePubSubCommand = (
             ),
           ] as const;
         } else {
+          let unsubscribedChannels: readonly string[];
+
+          if (command.channels.length === 0) {
+            const prevChannels = yield* FiberRef.getAndSet(
+              currentlySubscribedChannelsFiberRef,
+              HashSet.empty()
+            );
+            unsubscribedChannels = [...prevChannels];
+          } else {
+            unsubscribedChannels = command.channels;
+          }
+
           const currentlySubscribedChannels = yield* FiberRef.updateAndGet(
             currentlySubscribedChannelsFiberRef,
             HashSet.filter((channel) => !command.channels.includes(channel))
@@ -235,6 +247,7 @@ const handlePubSubCommand = (
           if (HashSet.size(currentlySubscribedChannels) === 0) {
             yield* Scope.close(state.scope, Exit.void);
           }
+          let channelCount = HashSet.size(currentlySubscribedChannels);
 
           return [
             {
@@ -243,15 +256,16 @@ const handlePubSubCommand = (
             },
             Option.some(
               Stream.make(
-                new RESP.Array({
-                  value: [
-                    new RESP.BulkString({ value: "unsubscribe" }),
-                    ...command.channels.map(
-                      (channel) => new RESP.BulkString({ value: channel })
-                    ),
-                    new RESP.Integer({ value: command.channels.length }),
-                  ],
-                })
+                ...unsubscribedChannels.map(
+                  (channel) =>
+                    new RESP.Array({
+                      value: [
+                        new RESP.BulkString({ value: "unsubscribe" }),
+                        new RESP.BulkString({ value: channel }),
+                        new RESP.Integer({ value: channelCount-- }),
+                      ],
+                    })
+                )
               )
             ),
           ] as const;
@@ -361,21 +375,23 @@ const handleServerCommand = (
   input: CommandTypes.Server
 ): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
   Effect.gen(function* () {
-    return yield* Match.value(input).pipe(
-      Match.when({ _tag: "QUIT" }, () =>
-        Effect.succeed(new RESP.SimpleString({ value: "OK" }))
-      ), // ! this is wrong
-      // Match.when({ _tag: "COMMAND" }, (input) => {
-      //   console.log("here", input)
-      //   if (input.args[0]?.value === "DOCS") {
-      //     return generateCommandDocResponse
-      //   } else {
-      //     return Effect.succeed(defaultNonErrorUnknownResponse)
-      //   }
-      // }),
-      Match.orElse(() => Effect.succeed(defaultNonErrorUnknownResponse))
-    );
-  });
+    switch (input._tag) {
+      case "QUIT":
+        return Stream.dieMessage("QUIT command received");
+      case "PING":
+        return Stream.make(new RESP.SimpleString({ value: "PONG" }));
+      case "ECHO":
+        return Stream.make(new RESP.SimpleString({ value: input.message }));
+      case "COMMAND":
+        if (input.args[0] === "DOCS") {
+          return Stream.make(new RESP.SimpleString({ value: "TODO" }));
+        } else {
+          return Stream.make(new RESP.SimpleString({ value: "TODO" }));
+        }
+      case "CLIENT":
+        return Stream.make(new RESP.SimpleString({ value: "TODO" }));
+    }
+  }).pipe(Stream.unwrap);
 
 const encodeToWireFormat = (
   input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>

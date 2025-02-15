@@ -197,9 +197,7 @@ export namespace Commands {
 
   // commands that configure and modify the server
   // (client, config, info, etc.)
-  export class PING extends Schema.TaggedClass<PING>("PING")("PING", {
-    message: Schema.optional(Schema.String),
-  }) {}
+  export class PING extends Schema.TaggedClass<PING>("PING")("PING", {}) {}
   export class ECHO extends Schema.TaggedClass<ECHO>("ECHO")("ECHO", {
     message: Schema.String,
   }) {}
@@ -752,7 +750,6 @@ export const CommandFromRESP = pipe(
           case "PING":
             return yield* Schema.decode(Commands.PING)({
               _tag: "PING",
-              message: args[0],
             }).pipe(
               Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
             );
