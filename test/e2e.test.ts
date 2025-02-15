@@ -21,7 +21,7 @@ import * as PubSub from "../src/PubSub.js";
 
 const mainLive = pipe(
   main,
-  Effect.provide(Logger.minimumLogLevel(LogLevel.All)),
+  Effect.provide(Logger.minimumLogLevel(LogLevel.Info)),
   Effect.forkScoped,
   Layer.scopedDiscard
 );
@@ -42,7 +42,7 @@ const sharedServices = pipe(
 );
 
 // todo: hack for now
-// Effect.runPromise(Layer.launch(sharedServices));
+Effect.runPromise(Layer.launch(sharedServices));
 
 const generateKey = Random.nextInt.pipe(Effect.map((i) => `redisTests:${i}`));
 
@@ -53,15 +53,15 @@ const redisClientLive = Redis.layer({
   socket: { port: 6379, host: "localhost" },
 });
 
-beforeAll(async () => {
-  // todo: if add persistence to our implementation, we can remove this
-  await Effect.runPromise(
-    Effect.gen(function* () {
-      const client = yield* Redis.Redis;
-      yield* client.use((client) => client.flushAll());
-    }).pipe(Effect.provide(redisClientLive))
-  );
-});
+// beforeAll(async () => {
+//   // todo: if add persistence to our implementation, we can remove this
+//   await Effect.runPromise(
+//     Effect.gen(function* () {
+//       const client = yield* Redis.Redis;
+//       yield* client.use((client) => client.flushAll());
+//     }).pipe(Effect.provide(redisClientLive))
+//   );
+// });
 
 const sleep = (duration: Duration.DurationInput) =>
   Effect.gen(function* () {
@@ -159,7 +159,7 @@ layer(Layer.mergeAll(redisServerLive, redisClientLive), {})("e2e", (it) => {
     })
   );
 
-  it.effect("MULTI", () =>
+  it.effect.only("MULTI", () =>
     Effect.gen(function* () {
       const client = yield* Redis.Redis;
       const [key1, key2] = yield* Effect.all([generateKey, generateKey]);

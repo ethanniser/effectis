@@ -13,6 +13,7 @@ const currentTransactionFiberRef = FiberRef.unsafeMake<
 export const isRunningTransaction = FiberRef.get(
   currentTransactionFiberRef
 ).pipe(Effect.map(Option.isSome));
+
 export const startTransaction = Effect.gen(function* () {
   const tx = yield* FiberRef.get(currentTransactionFiberRef);
   if (Option.isSome(tx)) {
@@ -23,6 +24,7 @@ export const startTransaction = Effect.gen(function* () {
       })
     );
   } else {
+    yield* Effect.logInfo("Starting transaction");
     yield* FiberRef.set(currentTransactionFiberRef, Option.some(Chunk.empty()));
   }
 });

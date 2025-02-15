@@ -781,6 +781,12 @@ export const CommandFromRESP = pipe(
             }).pipe(
               Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
             );
+          case "FLUSHALL":
+            return yield* Schema.decode(Commands.FLUSHALL)({
+              _tag: "FLUSHALL",
+            }).pipe(
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
           case "PUBLISH":
             return yield* Schema.decode(Commands.PUBLISH)({
               _tag: "PUBLISH",

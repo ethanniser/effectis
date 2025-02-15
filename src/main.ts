@@ -39,16 +39,15 @@ const defaultNonErrorUnknownResponse = new RESP.SimpleString({
   value: "Unknown command",
 });
 
-export const main = Effect.fn("main")(
-  function* () {
-    const server = yield* SocketServer.SocketServer;
-    yield* Effect.logInfo(
-      `Server started on port: ${
-        server.address._tag === "TcpAddress" ? server.address.port : "unknown"
-      }`
-    );
-    yield* server.run(handleConnection);
-  },
+export const main = Effect.gen(function* () {
+  const server = yield* SocketServer.SocketServer;
+  yield* Effect.logInfo(
+    `Server started on port: ${
+      server.address._tag === "TcpAddress" ? server.address.port : "unknown"
+    }`
+  );
+  yield* server.run(handleConnection);
+}).pipe(
   Effect.catchAll((e) => Effect.logError("Uncaught error", e)),
   Effect.catchAllDefect((e) => Effect.logFatal("Defect", e))
 );
@@ -352,6 +351,11 @@ function handleExecutionCommand(
   input: CommandTypes.Execution
 ): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
   return Effect.gen(function* () {
+    yield* Effect.logInfo(
+      "Handling execution command: ",
+      yield* Tx.isRunningTransaction,
+      input
+    );
     switch (input._tag) {
       case "MULTI": {
         yield* Tx.startTransaction;
