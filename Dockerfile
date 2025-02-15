@@ -8,7 +8,7 @@ RUN npm install -g bun
 
 RUN bun install
 
-RUN bun build
+RUN bun run build
 
 EXPOSE 6789
 
