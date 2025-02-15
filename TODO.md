@@ -25,9 +25,10 @@ log and flush peristence
 - [x] implement persistence (these dont have to be redis compatible for now)
   - [x] log persistence (untested)
   - [x] snapshot persistence (untested)
+- [x] clean up error handling
+- [ ] fix tests (transactions and pubsub)
 - [ ] perf comparison
 - [ ] build out CLI
-- [x] clean up error handling
 - [ ] implement remaining data structures / commands
   - [ ] string
   - [ ] hash
