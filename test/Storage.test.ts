@@ -1,12 +1,27 @@
 import { NodeContext } from "@effect/platform-node";
 import { describe, expect, it } from "@effect/vitest";
-import { Chunk, Effect, Layer, pipe, Schema, Stream } from "effect";
+import {
+  Chunk,
+  Effect,
+  Layer,
+  pipe,
+  Schema,
+  Stream,
+  Option,
+  Logger,
+  LogLevel,
+} from "effect";
 import { CommandFromRESP, Commands } from "../src/Command.js";
 import { processRESP } from "../src/main.js";
 import { RESP } from "../src/RESP.js";
 import * as STMBackedInMemory from "../src/Storage/STMBackedInMemory.js";
+import * as PubSub from "../src/PubSub.js";
 
-const TestServices = Layer.merge(STMBackedInMemory.layer(), NodeContext.layer);
+const TestServices = Layer.mergeAll(
+  STMBackedInMemory.layer(),
+  NodeContext.layer,
+  PubSub.layer
+);
 
 const runInput = (input: RESP.Value) =>
   pipe(Stream.make(input), processRESP, Stream.runCollect);
@@ -17,7 +32,12 @@ describe("Storage", () => {
   it.effect("SET", () =>
     Effect.gen(function* () {
       const result = yield* pipe(
-        new Commands.SET({ key: "key", value: "value" }),
+        new Commands.SET({
+          key: "key",
+          value: "value",
+          expiration: Option.none(),
+          mode: Option.none(),
+        }),
         Schema.encode(CommandFromRESP),
         Effect.andThen(runInput)
       );
@@ -29,7 +49,12 @@ describe("Storage", () => {
   it.effect("SET and GET", () =>
     Effect.gen(function* () {
       yield* pipe(
-        new Commands.SET({ key: "key", value: "value" }),
+        new Commands.SET({
+          key: "key",
+          value: "value",
+          expiration: Option.none(),
+          mode: Option.none(),
+        }),
         Schema.encode(CommandFromRESP),
         Effect.andThen(runInput)
       );
@@ -47,12 +72,22 @@ describe("Storage", () => {
   it.effect("DEL", () =>
     Effect.gen(function* () {
       yield* pipe(
-        new Commands.SET({ key: "key", value: "value" }),
+        new Commands.SET({
+          key: "key",
+          value: "value",
+          expiration: Option.none(),
+          mode: Option.none(),
+        }),
         Schema.encode(CommandFromRESP),
         Effect.andThen(runInput)
       );
       yield* pipe(
-        new Commands.SET({ key: "key2", value: "value2" }),
+        new Commands.SET({
+          key: "key2",
+          value: "value2",
+          expiration: Option.none(),
+          mode: Option.none(),
+        }),
         Schema.encode(CommandFromRESP),
         Effect.andThen(runInput)
       );
@@ -70,12 +105,22 @@ describe("Storage", () => {
   it.effect("EXISTS", () =>
     Effect.gen(function* () {
       yield* pipe(
-        new Commands.SET({ key: "key", value: "value" }),
+        new Commands.SET({
+          key: "key",
+          value: "value",
+          expiration: Option.none(),
+          mode: Option.none(),
+        }),
         Schema.encode(CommandFromRESP),
         Effect.andThen(runInput)
       );
       yield* pipe(
-        new Commands.SET({ key: "key2", value: "value2" }),
+        new Commands.SET({
+          key: "key2",
+          value: "value2",
+          expiration: Option.none(),
+          mode: Option.none(),
+        }),
         Schema.encode(CommandFromRESP),
         Effect.andThen(runInput)
       );

@@ -205,7 +205,6 @@ class STMBackedInMemoryStore implements StorageImpl {
   }
 
   setStore(key: string, value: StoredValue): STM.STM<void> {
-    console.log("setStore", key, value);
     return TRef.update(this.store, (map) => HashMap.set(map, key, value));
   }
 

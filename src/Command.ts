@@ -461,7 +461,7 @@ export const CommandFromRESP = pipe(
 
         switch (command) {
           case "SET": {
-            const mode = ((): Option.Option<"NX" | "XX"> => {
+            const mode = yield* ((): Option.Option<"NX" | "XX"> => {
               if (args.length === 3) {
                 const arg2 = args[2];
                 if (arg2 === "NX" || arg2 === "XX") {
@@ -479,7 +479,11 @@ export const CommandFromRESP = pipe(
               } else {
                 return Option.none();
               }
-            })();
+            })().pipe(
+              Schema.encode(Schema.Option(Schema.Literal("NX", "XX"))),
+              Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
+            );
+
             const expiration = yield* Effect.gen(function* () {
               if (args[2] === "EX") {
                 const seconds = yield* Schema.decode(
@@ -500,9 +504,12 @@ export const CommandFromRESP = pipe(
               }
             }).pipe(
               Effect.map(Option.fromNullable),
+              Effect.flatMap((_) =>
+                Schema.encode(Schema.Option(Schema.Duration))(_)
+              ),
               Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
             );
-            return yield* Schema.decode(Schema.typeSchema(Commands.SET))({
+            return yield* Schema.decode(Commands.SET)({
               _tag: "SET",
               key: args[0],
               value: args[1],
