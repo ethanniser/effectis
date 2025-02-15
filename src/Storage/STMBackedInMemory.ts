@@ -7,6 +7,7 @@ import {
   HashMap,
   Layer,
   Option,
+  ParseResult,
   pipe,
   Schedule,
   Schema,
@@ -18,12 +19,10 @@ import { RESP } from "../RESP.js";
 import type { StorageImpl } from "../Storage.js";
 import { Storage, StorageError } from "../Storage.js";
 
-// background cleanup fiber to remove expired keys
-// store time for this in FiberRef
-
 // because js is single threaded, well never have an inconsistent state
 // however within an effect (the run command function) any effect can be a yield point
 // hence we need more machinery to do concurrent transactions
+// also rollback lol
 
 namespace Stored {
   export class String extends Schema.TaggedClass<String>("String")("String", {
@@ -57,11 +56,32 @@ type StoredValue = Schema.Schema.Type<typeof StoredValue>;
 
 type Store = TRef.TRef<HashMap.HashMap<string, StoredValue>>;
 
-const SnapshotSchema = Schema.parseJson(
-  Schema.HashMap({
-    key: Schema.String,
-    value: StoredValue,
-  })
+const SnapshotSchema = Schema.transformOrFail(
+  Schema.Uint8ArrayFromSelf,
+  Schema.parseJson(
+    Schema.HashMap({
+      key: Schema.String,
+      value: StoredValue,
+    })
+  ),
+  {
+    decode: (bytes, _, ast) =>
+      Effect.gen(function* () {
+        const decoder = new TextDecoder();
+        return yield* Effect.try({
+          try: () => decoder.decode(bytes),
+          catch: (e) => new ParseResult.Type(ast, bytes, "TextDecoder error"),
+        });
+      }),
+    encode: (string, _, ast) =>
+      Effect.gen(function* () {
+        const encoder = new TextEncoder();
+        return yield* Effect.try({
+          try: () => encoder.encode(string),
+          catch: (e) => new ParseResult.Type(ast, string, "TextEncoder error"),
+        });
+      }),
+  }
 );
 
 class STMBackedInMemoryStore implements StorageImpl {
@@ -99,17 +119,17 @@ class STMBackedInMemoryStore implements StorageImpl {
     });
   }
 
-  generateSnapshot: Effect.Effect<Uint8Array, StorageError, never> = Effect.gen(
-    this,
-    function* () {
-      const value = yield* TRef.get(this.store);
-      throw new Error("Not implemented");
-    }
-  );
-  restoreFromSnapshot(
-    _snapshot: Uint8Array
-  ): Effect.Effect<void, StorageError, never> {
-    return Effect.die("Not implemented");
+  generateSnapshot = Effect.gen(this, function* () {
+    const value = yield* TRef.get(this.store);
+    const bytes = yield* Schema.encode(SnapshotSchema)(value);
+    return bytes;
+  });
+
+  restoreFromSnapshot(snapshot: Uint8Array) {
+    return Effect.gen(this, function* () {
+      const store = yield* Schema.decode(SnapshotSchema)(snapshot);
+      yield* TRef.set(this.store, store);
+    });
   }
 
   purgeExpired: Effect.Effect<void, StorageError, never> = Effect.gen(

@@ -2,6 +2,7 @@ import { FileSystem } from "@effect/platform";
 import { Context, Effect, Layer, pipe, Queue, Schedule, Schema } from "effect";
 import { CommandTypes, StorageCommandJSON } from "./Command.js";
 import type { RESP } from "./RESP.js";
+import { ParseError } from "effect/ParseResult";
 
 // ! todo I dont think the two storage modes are compatible rn just because they both try to restore
 
@@ -16,8 +17,10 @@ export interface StorageImpl {
   runTransaction(
     commands: ReadonlyArray<CommandTypes.Storage>
   ): Effect.Effect<Array<RESP.Value>, StorageError>;
-  generateSnapshot: Effect.Effect<Uint8Array, StorageError>;
-  restoreFromSnapshot(snapshot: Uint8Array): Effect.Effect<void, StorageError>;
+  generateSnapshot: Effect.Effect<Uint8Array, StorageError | ParseError>;
+  restoreFromSnapshot(
+    snapshot: Uint8Array
+  ): Effect.Effect<void, StorageError | ParseError>;
 }
 
 export class Storage extends Context.Tag("Storage")<Storage, StorageImpl>() {}

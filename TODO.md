@@ -26,7 +26,7 @@ log and flush peristence
 - [x] implement transactions
 - [ ] implement persistence (these dont have to be redis compatible for now)
   - [x] log persistence (untested)
-  - [ ] snapshot persistence (skeleton but not implemented)
+  - [x] snapshot persistence (untested)
 - [ ] perf comparison
 - [ ] build out CLI
 - [ ] clean up error handling
