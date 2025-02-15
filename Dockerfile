@@ -5,7 +5,6 @@ WORKDIR /app
 COPY . .
 
 RUN npm install -g bun
-RUN npm install -g pnpm
 
 RUN bun install
 
