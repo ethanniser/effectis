@@ -9,6 +9,7 @@ import {
   Option,
   pipe,
   Schedule,
+  Schema,
   STM,
   TRef,
 } from "effect";
@@ -24,22 +25,44 @@ import { Storage, StorageError } from "../Storage.js";
 // however within an effect (the run command function) any effect can be a yield point
 // hence we need more machinery to do concurrent transactions
 
-type StoredValue = Data.TaggedEnum<{
-  String: { value: string } & { expiration: Option.Option<DateTime.DateTime> };
-  List: { value: TRef.TRef<Chunk.Chunk<string>> } & {
-    expiration: Option.Option<DateTime.DateTime>;
-  };
-  Hash: { value: TRef.TRef<HashMap.HashMap<string, string>> } & {
-    expiration: Option.Option<DateTime.DateTime>;
-  };
-  Set: { value: TRef.TRef<HashSet.HashSet<string>> } & {
-    expiration: Option.Option<DateTime.DateTime>;
-  };
-}>;
+namespace Stored {
+  export class String extends Schema.TaggedClass<String>("String")("String", {
+    value: Schema.String,
+    expiration: Schema.Option(Schema.DateTimeUtc),
+  }) {}
+  export class List extends Schema.TaggedClass<List>("List")("List", {
+    value: Schema.Array(Schema.String),
+    expiration: Schema.Option(Schema.DateTimeUtc),
+  }) {}
+  export class Hash extends Schema.TaggedClass<Hash>("Hash")("Hash", {
+    value: Schema.HashMap({
+      key: Schema.String,
+      value: Schema.String,
+    }),
+    expiration: Schema.Option(Schema.DateTimeUtc),
+  }) {}
+  export class Set extends Schema.TaggedClass<Set>("Set")("Set", {
+    value: Schema.HashSet(Schema.String),
+    expiration: Schema.Option(Schema.DateTimeUtc),
+  }) {}
+}
+const StoredValue = Schema.Union(
+  Stored.String,
+  Stored.List,
+  Stored.Hash,
+  Stored.Set
+);
 
-const StoredValue = Data.taggedEnum<StoredValue>();
+type StoredValue = Schema.Schema.Type<typeof StoredValue>;
 
 type Store = TRef.TRef<HashMap.HashMap<string, StoredValue>>;
+
+const SnapshotSchema = Schema.parseJson(
+  Schema.HashMap({
+    key: Schema.String,
+    value: StoredValue,
+  })
+);
 
 class STMBackedInMemoryStore implements StorageImpl {
   readonly store: Store;
@@ -76,8 +99,13 @@ class STMBackedInMemoryStore implements StorageImpl {
     });
   }
 
-  generateSnapshot: Effect.Effect<Uint8Array, StorageError, never> =
-    Effect.die("Not implemented");
+  generateSnapshot: Effect.Effect<Uint8Array, StorageError, never> = Effect.gen(
+    this,
+    function* () {
+      const value = yield* TRef.get(this.store);
+      throw new Error("Not implemented");
+    }
+  );
   restoreFromSnapshot(
     _snapshot: Uint8Array
   ): Effect.Effect<void, StorageError, never> {
@@ -105,7 +133,7 @@ class STMBackedInMemoryStore implements StorageImpl {
 
   processCommandToSTM(
     command: CommandTypes.Storage,
-    now: DateTime.DateTime
+    now: DateTime.Utc
   ): STM.STM<RESP.Value, StorageError, never> {
     switch (command._tag) {
       case "GET":
@@ -137,7 +165,7 @@ class STMBackedInMemoryStore implements StorageImpl {
 
   getStore(
     key: string,
-    now: DateTime.DateTime
+    now: DateTime.Utc
   ): STM.STM<Option.Option<StoredValue>> {
     return STM.gen(this, function* () {
       const value = yield* TRef.get(this.store).pipe(STM.map(HashMap.get(key)));
@@ -165,7 +193,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     return TRef.update(this.store, (map) => HashMap.remove(map, key));
   }
 
-  GET(command: Commands.GET, now: DateTime.DateTime) {
+  GET(command: Commands.GET, now: DateTime.Utc) {
     return STM.gen(this, function* () {
       const value = yield* this.getStore(command.key, now);
       if (Option.isNone(value)) {
@@ -180,39 +208,40 @@ class STMBackedInMemoryStore implements StorageImpl {
     });
   }
 
-  SET(command: Commands.SET, now: DateTime.DateTime) {
+  SET(command: Commands.SET, now: DateTime.Utc) {
     return STM.gen(this, function* () {
       const prev = yield* this.getStore(command.key, now);
-      const expiration = Option.fromNullable(command.expiration).pipe(
+      const expiration = command.expiration.pipe(
         Option.map((duration) => DateTime.addDuration(now, duration))
       );
-      if (command.mode === "NX") {
-        if (Option.isSome(prev)) {
-          return new RESP.SimpleString({ value: "OK" });
-        } else {
-          yield* this.setStore(
-            command.key,
-            StoredValue.String({ value: command.value, expiration })
-          );
-          return new RESP.SimpleString({ value: "OK" });
+      if (Option.isSome(command.mode)) {
+        if (command.mode.value === "NX") {
+          if (Option.isSome(prev)) {
+            return new RESP.SimpleString({ value: "OK" });
+          } else {
+            yield* this.setStore(
+              command.key,
+              new Stored.String({ value: command.value, expiration })
+            );
+            return new RESP.SimpleString({ value: "OK" });
+          }
+        } else if (command.mode.value === "XX") {
+          if (Option.isSome(prev)) {
+            yield* this.setStore(
+              command.key,
+              new Stored.String({ value: command.value, expiration })
+            );
+            return new RESP.SimpleString({ value: "Ok" });
+          } else {
+            return new RESP.SimpleString({ value: "OK" });
+          }
         }
-      } else if (command.mode === "XX") {
-        if (Option.isSome(prev)) {
-          yield* this.setStore(
-            command.key,
-            StoredValue.String({ value: command.value, expiration })
-          );
-          return new RESP.SimpleString({ value: "Ok" });
-        } else {
-          return new RESP.SimpleString({ value: "OK" });
-        }
-      } else {
-        yield* this.setStore(
-          command.key,
-          StoredValue.String({ value: command.value, expiration })
-        );
-        return new RESP.SimpleString({ value: "OK" });
       }
+      yield* this.setStore(
+        command.key,
+        new Stored.String({ value: command.value, expiration })
+      );
+      return new RESP.SimpleString({ value: "OK" });
     });
   }
 
@@ -225,7 +254,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     });
   }
 
-  EXISTS(command: Commands.EXISTS, now: DateTime.DateTime) {
+  EXISTS(command: Commands.EXISTS, now: DateTime.Utc) {
     return STM.gen(this, function* () {
       let count = 0;
       for (const key of command.keys) {
@@ -237,44 +266,50 @@ class STMBackedInMemoryStore implements StorageImpl {
     });
   }
 
-  EXPIRE(command: Commands.EXPIRE, now: DateTime.DateTime) {
+  EXPIRE(command: Commands.EXPIRE, now: DateTime.Utc) {
     return STM.gen(this, function* () {
       const prev = yield* this.getStore(command.key, now);
-      if (command.mode === "NX") {
-        if (
-          Option.flatMap(prev, (value) => value.expiration).pipe(Option.isNone)
-        ) {
-          return new RESP.Integer({ value: 0 });
-        }
-      } else if (command.mode === "XX") {
-        if (
-          Option.flatMap(prev, (value) => value.expiration).pipe(Option.isSome)
-        ) {
-          return new RESP.Integer({ value: 0 });
-        }
-      } else if (command.mode === "GT") {
-        const newExpiration = DateTime.addDuration(now, command.duration);
-        if (
-          prev.pipe(
-            Option.flatMap((value) => value.expiration),
-            Option.map((expiration) =>
-              DateTime.lessThanOrEqualTo(expiration, newExpiration)
+      if (Option.isSome(command.mode)) {
+        if (command.mode.value === "NX") {
+          if (
+            Option.flatMap(prev, (value) => value.expiration).pipe(
+              Option.isNone
             )
-          )
-        ) {
-          return new RESP.Integer({ value: 0 });
-        }
-      } else if (command.mode === "LT") {
-        const newExpiration = DateTime.addDuration(now, command.duration);
-        if (
-          prev.pipe(
-            Option.flatMap((value) => value.expiration),
-            Option.map((expiration) =>
-              DateTime.greaterThanOrEqualTo(expiration, newExpiration)
+          ) {
+            return new RESP.Integer({ value: 0 });
+          }
+        } else if (command.mode.value === "XX") {
+          if (
+            Option.flatMap(prev, (value) => value.expiration).pipe(
+              Option.isSome
             )
-          )
-        ) {
-          return new RESP.Integer({ value: 0 });
+          ) {
+            return new RESP.Integer({ value: 0 });
+          }
+        } else if (command.mode.value === "GT") {
+          const newExpiration = DateTime.addDuration(now, command.duration);
+          if (
+            prev.pipe(
+              Option.flatMap((value) => value.expiration),
+              Option.map((expiration) =>
+                DateTime.lessThanOrEqualTo(expiration, newExpiration)
+              )
+            )
+          ) {
+            return new RESP.Integer({ value: 0 });
+          }
+        } else if (command.mode.value === "LT") {
+          const newExpiration = DateTime.addDuration(now, command.duration);
+          if (
+            prev.pipe(
+              Option.flatMap((value) => value.expiration),
+              Option.map((expiration) =>
+                DateTime.greaterThanOrEqualTo(expiration, newExpiration)
+              )
+            )
+          ) {
+            return new RESP.Integer({ value: 0 });
+          }
         }
       }
       if (Option.isNone(prev)) {
@@ -289,7 +324,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     });
   }
 
-  TTL(command: Commands.TTL, now: DateTime.DateTime) {
+  TTL(command: Commands.TTL, now: DateTime.Utc) {
     return STM.gen(this, function* () {
       const prev = yield* this.getStore(command.key, now);
       if (Option.isNone(prev)) {
@@ -305,7 +340,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     });
   }
 
-  PERSIST(command: Commands.PERSIST, now: DateTime.DateTime) {
+  PERSIST(command: Commands.PERSIST, now: DateTime.Utc) {
     return STM.gen(this, function* () {
       const prev = yield* this.getStore(command.key, now);
       if (Option.isNone(prev)) {
@@ -319,7 +354,7 @@ class STMBackedInMemoryStore implements StorageImpl {
     });
   }
 
-  TYPE(command: Commands.TYPE, now: DateTime.DateTime) {
+  TYPE(command: Commands.TYPE, now: DateTime.Utc) {
     return STM.gen(this, function* () {
       const prev = yield* this.getStore(command.key, now);
       if (Option.isNone(prev)) {

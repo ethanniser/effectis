@@ -1,4 +1,4 @@
-import { Duration, Effect, ParseResult, pipe, Schema } from "effect";
+import { Duration, Effect, ParseResult, pipe, Schema, Option } from "effect";
 import { RESP } from "./RESP.js";
 
 // commands schould be serializable for WAL purposes
@@ -12,8 +12,8 @@ export namespace Commands {
   export class SET extends Schema.TaggedClass<SET>("SET")("SET", {
     key: Schema.String,
     value: Schema.String,
-    expiration: Schema.optional(Schema.Duration),
-    mode: Schema.optional(Schema.Literal("NX", "XX")),
+    expiration: Schema.Option(Schema.Duration),
+    mode: Schema.Option(Schema.Literal("NX", "XX")),
   }) {}
 
   export class GET extends Schema.TaggedClass<GET>("GET")("GET", {
@@ -31,7 +31,7 @@ export namespace Commands {
   export class EXPIRE extends Schema.TaggedClass<EXPIRE>("EXPIRE")("EXPIRE", {
     key: Schema.String,
     duration: Schema.Duration,
-    mode: Schema.optional(Schema.Literal("NX", "XX", "GT", "LT")),
+    mode: Schema.Option(Schema.Literal("NX", "XX", "GT", "LT")),
   }) {}
 
   export class TTL extends Schema.TaggedClass<TTL>("TTL")("TTL", {
@@ -91,12 +91,12 @@ export namespace Commands {
 
   export class LPOP extends Schema.TaggedClass<LPOP>("LPOP")("LPOP", {
     key: Schema.String,
-    count: Schema.optional(Schema.parseNumber(Schema.String)),
+    count: Schema.Option(Schema.parseNumber(Schema.String)),
   }) {}
 
   export class RPOP extends Schema.TaggedClass<RPOP>("RPOP")("RPOP", {
     key: Schema.String,
-    count: Schema.optional(Schema.parseNumber(Schema.String)),
+    count: Schema.Option(Schema.parseNumber(Schema.String)),
   }) {}
 
   export class LLEN extends Schema.TaggedClass<LLEN>("LLEN")("LLEN", {
@@ -463,21 +463,23 @@ export const CommandFromRESP = pipe(
 
         switch (command) {
           case "SET": {
-            const mode = (() => {
+            const mode = ((): Option.Option<"NX" | "XX"> => {
               if (args.length === 3) {
-                if (args[2] === "NX" || args[2] === "XX") {
-                  return args[2];
+                const arg2 = args[2];
+                if (arg2 === "NX" || arg2 === "XX") {
+                  return Option.some(arg2);
                 } else {
-                  return undefined;
+                  return Option.none();
                 }
               } else if (args.length === 5) {
-                if (args[4] === "NX" || args[4] === "XX") {
-                  return args[4];
+                const arg4 = args[4];
+                if (arg4 === "NX" || arg4 === "XX") {
+                  return Option.some(arg4);
                 } else {
-                  return undefined;
+                  return Option.none();
                 }
               } else {
-                return undefined;
+                return Option.none();
               }
             })();
             const expiration = yield* Effect.gen(function* () {
@@ -487,7 +489,7 @@ export const CommandFromRESP = pipe(
                     Schema.compose(Schema.Int)
                   )
                 )(args[3]);
-                return Duration.seconds(seconds);
+                // return Duration.seconds(seconds);
               } else if (args[2] === "PX") {
                 const milliseconds = yield* Schema.decode(
                   Schema.parseNumber(Schema.String).pipe(
@@ -499,13 +501,10 @@ export const CommandFromRESP = pipe(
                 return undefined;
               }
             }).pipe(
-              Effect.flatMap(
-                Schema.encode(Schema.Union(Schema.Undefined, Schema.Duration))
-              ),
-              // ? no clue why this is needed and `typeSchema` doesnt work below but idk
+              Effect.map(Option.fromNullable),
               Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
             );
-            return yield* Schema.decode(Commands.SET)({
+            return yield* Schema.decode(Schema.typeSchema(Commands.SET))({
               _tag: "SET",
               key: args[0],
               value: args[1],
@@ -628,7 +627,7 @@ export const CommandFromRESP = pipe(
             return yield* Schema.decode(Commands.LPOP)({
               _tag: "LPOP",
               key: args[0],
-              count: args[1],
+              count: Option.fromNullable(args[1]),
             }).pipe(
               Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
             );
@@ -636,7 +635,7 @@ export const CommandFromRESP = pipe(
             return yield* Schema.decode(Commands.RPOP)({
               _tag: "RPOP",
               key: args[0],
-              count: args[1],
+              count: Option.fromNullable(args[1]),
             }).pipe(
               Effect.catchTag("ParseError", (error) => Effect.fail(error.issue))
             );
@@ -808,19 +807,19 @@ export const CommandFromRESP = pipe(
                 new RESP.BulkString({ value: "SET" }),
                 new RESP.BulkString({ value: command.key }),
                 new RESP.BulkString({ value: command.value }),
-                ...(command.expiration
-                  ? [
-                      new RESP.BulkString({ value: "EX" }),
-                      new RESP.BulkString({
-                        value: Duration.toSeconds(
-                          command.expiration
-                        ).toString(),
-                      }),
-                    ]
-                  : []),
-                ...(command.mode
-                  ? [new RESP.BulkString({ value: command.mode })]
-                  : []),
+                ...Option.match(command.expiration, {
+                  onSome: (expiration) => [
+                    new RESP.BulkString({ value: "EX" }),
+                    new RESP.BulkString({
+                      value: Duration.toSeconds(expiration).toString(),
+                    }),
+                  ],
+                  onNone: () => [],
+                }),
+                ...Option.match(command.mode, {
+                  onSome: (mode) => [new RESP.BulkString({ value: mode })],
+                  onNone: () => [],
+                }),
               ],
             });
           case "GET":
@@ -856,9 +855,10 @@ export const CommandFromRESP = pipe(
                 new RESP.BulkString({
                   value: Duration.toSeconds(command.duration).toString(),
                 }),
-                ...(command.mode
-                  ? [new RESP.BulkString({ value: command.mode })]
-                  : []),
+                ...Option.match(command.mode, {
+                  onSome: (mode) => [new RESP.BulkString({ value: mode })],
+                  onNone: () => [],
+                }),
               ],
             });
           case "TTL":

@@ -46,7 +46,6 @@ export const main = Effect.gen(function* () {
   Effect.catchAllDefect((e) => Effect.logFatal("Defect", e))
 );
 
-// can use fiberrefs for connection local state
 const handleConnection = Effect.fn("handleConnection")(
   function* (socket: Socket.Socket) {
     yield* Effect.logInfo("New connection");
