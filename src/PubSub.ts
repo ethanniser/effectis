@@ -1,28 +1,27 @@
 import {
   Context,
-  FiberRef,
   Effect,
-  HashSet,
   Stream,
   PubSub,
   Data,
-  Queue,
   Scope,
   Layer,
   pipe,
+  flow,
 } from "effect";
-import { Command } from "./Command.js";
 
-class PubSubMessage extends Data.TaggedClass("PubSubMessage")<{
+export class PubSubMessage extends Data.TaggedClass("PubSubMessage")<{
   channel: string;
   message: string;
 }> {}
 
 interface PubSubDriverImpl {
-  subscribe: (channels: string[]) => Stream.Stream<PubSubMessage>;
+  subscribe: (
+    channels: string[]
+  ) => Effect.Effect<Stream.Stream<PubSubMessage>, never, Scope.Scope>;
 }
 
-class PubSubDriver extends Context.Tag("PubSubDriver")<
+export class PubSubDriver extends Context.Tag("PubSubDriver")<
   PubSubDriver,
   PubSubDriverImpl
 >() {}
@@ -35,9 +34,12 @@ export const layer = Layer.effect(
       subscribe: (channels) =>
         pipe(
           pubsub.subscribe,
-          Effect.map(Stream.fromQueue),
-          Stream.unwrapScoped,
-          Stream.filter(({ channel }) => channels.includes(channel))
+          Effect.map(
+            flow(
+              Stream.fromQueue,
+              Stream.filter(({ channel }) => channels.includes(channel))
+            )
+          )
         ),
     });
   })

@@ -10,12 +10,14 @@ import {
   Option,
   pipe,
   Schema,
+  Scope,
   Stream,
 } from "effect";
 import { type Command, CommandFromRESP, CommandTypes } from "./Command.js";
 import { RESP } from "./RESP.js";
 import { Storage } from "./Storage.js";
 import * as Tx from "./Transaction.js";
+import { PubSubDriver } from "./PubSub.js";
 
 type RedisEffectError = unknown;
 type RedisServices = Storage | FileSystem.FileSystem;
@@ -63,6 +65,15 @@ const handleConnection = Effect.fn("handleConnection")(
 );
 
 // * probably need to move the pubsub stuff up here with some sequencing function- maybe stream.flatten?
+type State =
+  | {
+      isSubscribed: true;
+      scope: Scope.CloseableScope;
+    }
+  | {
+      isSubscribed: false;
+      scope: undefined;
+    };
 
 export const processRESP = (
   input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
@@ -71,14 +82,74 @@ export const processRESP = (
     input,
     parseCommands,
     Stream.tap((value) => Effect.logTrace("Parsed command: ", value)),
-    Stream.mapEffect(
-      Option.match({
-        onSome: (command) => runCommand(command),
-        onNone: () => Effect.succeed(defaultNonErrorUnknownResponse),
-        // probably should be a error message but that makes the client mad so we just send back something
-      })
-    )
-  );
+    Stream.mapAccumEffect(
+      {
+        isSubscribed: false,
+        scope: undefined,
+      } as State,
+      (state, commandOption) =>
+        Effect.gen(function* () {
+          if (Option.isNone(commandOption)) {
+            return [
+              state,
+              Stream.make(new RESP.Error({ value: "Unknown command" })),
+            ] as const;
+          }
+          const command = commandOption.value;
+
+          if (state.isSubscribed) {
+            if (Schema.is(CommandTypes.PubSub)(command)) {
+              const [newState, result] = yield* handlePubSubCommand(
+                command,
+                state
+              );
+              return [newState, Option.some(result)];
+            } else {
+              return [state, Option.none()];
+            }
+          }
+
+          if (Schema.is(CommandTypes.PubSub)(command)) {
+            return yield* handlePubSubCommand(command, state);
+          } else if (Schema.is(CommandTypes.Execution)(command)) {
+            const result = handleExecutionCommand(command);
+            return [state, Option.some(result)];
+          } else if (Schema.is(CommandTypes.Server)(command)) {
+            const result = handleServerCommand(command);
+            return [state, Option.some(result)];
+          } else {
+            const result = handleStorageCommand(command);
+            return [state, Option.some(result)];
+          }
+        })
+    ),
+    Stream.filter(Option.isSome),
+    Stream.map((_) => _.value),
+    Stream.flatten({ concurrency: 2 })
+  ) as any;
+
+const handlePubSubCommand = (
+  command: CommandTypes.PubSub,
+  state: State
+): Effect.Effect<
+  [State, Stream.Stream<RESP.Value, RedisEffectError, RedisServices>],
+  RedisEffectError,
+  RedisServices
+> =>
+  Effect.gen(function* () {
+    const pubSub = yield* PubSubDriver;
+    switch (command._tag) {
+      case "SUBSCRIBE": {
+        if (state.isSubscribed) {
+          return [
+            state,
+            Stream.make(new RESP.Error({ value: "Already subscribed" })),
+          ];
+        } else {
+        }
+      }
+    }
+  }) as any;
 
 const decodeFromWireFormat = (
   input: Stream.Stream<Uint8Array, Socket.SocketError, RedisServices>
@@ -117,33 +188,23 @@ const parseCommands = (
     )
   );
 
-const runCommand = (
-  input: Command
-): Effect.Effect<RESP.Value, RedisEffectError, RedisServices> =>
+const handleStorageCommand = (
+  input: CommandTypes.Storage
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
   Effect.gen(function* () {
-    if (Schema.is(CommandTypes.Storage)(input)) {
-      if (yield* Tx.isRunningTransaction) {
-        yield* Tx.appendToCurrentTransaction(input);
-        return new RESP.SimpleString({ value: "QUEUED" });
-      } else {
-        const storage = yield* Storage;
-        const result = yield* storage.run(input);
-        return result;
-      }
-    } else if (Schema.is(CommandTypes.Server)(input)) {
-      return yield* processServerCommand(input);
-    } else if (Schema.is(CommandTypes.PubSub)(input)) {
-      return defaultNonErrorUnknownResponse;
-    } else if (Schema.is(CommandTypes.Execution)(input)) {
-      return yield* processExecutionCommand(input);
+    if (yield* Tx.isRunningTransaction) {
+      yield* Tx.appendToCurrentTransaction(input);
+      return new RESP.SimpleString({ value: "QUEUED" });
     } else {
-      return defaultNonErrorUnknownResponse;
+      const storage = yield* Storage;
+      const result = yield* storage.run(input);
+      return result;
     }
   });
 
-const processExecutionCommand = (
+const handleExecutionCommand = (
   input: CommandTypes.Execution
-): Effect.Effect<RESP.Value, RedisEffectError, RedisServices> =>
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
   Effect.gen(function* () {
     switch (input._tag) {
       case "MULTI": {
@@ -170,9 +231,9 @@ const processExecutionCommand = (
     }
   });
 
-const processServerCommand = (
+const handleServerCommand = (
   input: CommandTypes.Server
-): Effect.Effect<RESP.Value, RedisEffectError, RedisServices> =>
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
   Effect.gen(function* () {
     return yield* Match.value(input).pipe(
       Match.when({ _tag: "QUIT" }, () =>
