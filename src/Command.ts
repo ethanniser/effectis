@@ -1,5 +1,6 @@
 import { Duration, Effect, ParseResult, pipe, Schema, Option } from "effect";
 import { RESP } from "./RESP.js";
+import { scan } from "effect/Iterable";
 
 // commands schould be serializable for WAL purposes
 // some way to distinguish write vs read commands (only write commands should be replayed)
@@ -459,7 +460,7 @@ export const CommandFromRESP = pipe(
         const command = commandArgs[0];
         const args = commandArgs.slice(1);
 
-        switch (command) {
+        switch (command.toUpperCase()) {
           case "SET": {
             const mode = yield* ((): Option.Option<"NX" | "XX"> => {
               if (args.length === 3) {
@@ -491,7 +492,7 @@ export const CommandFromRESP = pipe(
                     Schema.compose(Schema.Int)
                   )
                 )(args[3]);
-                // return Duration.seconds(seconds);
+                return Duration.seconds(seconds);
               } else if (args[2] === "PX") {
                 const milliseconds = yield* Schema.decode(
                   Schema.parseNumber(Schema.String).pipe(

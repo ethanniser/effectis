@@ -121,7 +121,9 @@ function handleAccumEffect(
     if (Option.isNone(commandOption)) {
       return [
         state,
-        Option.some(Stream.make(new RESP.Error({ value: "Unknown command" }))),
+        Option.some(
+          Stream.make(new RESP.Error({ value: "Failed to parse command" }))
+        ),
       ] as const;
     }
     const command = commandOption.value;
@@ -395,12 +397,12 @@ function handleServerCommand(
         return Stream.make(new RESP.SimpleString({ value: input.message }));
       case "COMMAND":
         if (input.args[0] === "DOCS") {
-          return Stream.make(new RESP.SimpleString({ value: "TODO" }));
+          return Stream.make(new RESP.SimpleString({ value: "OK" }));
         } else {
-          return Stream.make(new RESP.SimpleString({ value: "TODO" }));
+          return Stream.make(new RESP.SimpleString({ value: "OK" }));
         }
       case "CLIENT":
-        return Stream.make(new RESP.SimpleString({ value: "TODO" }));
+        return Stream.make(new RESP.SimpleString({ value: "OK" }));
     }
   }).pipe(Stream.unwrap);
 }

@@ -42,7 +42,7 @@ const sharedServices = pipe(
 );
 
 // todo: hack for now
-Effect.runPromise(Layer.launch(sharedServices));
+// Effect.runPromise(Layer.launch(sharedServices));
 
 const generateKey = Random.nextInt.pipe(Effect.map((i) => `redisTests:${i}`));
 
@@ -159,7 +159,7 @@ layer(Layer.mergeAll(redisServerLive, redisClientLive), {})("e2e", (it) => {
     })
   );
 
-  it.effect.only("MULTI", () =>
+  it.effect("MULTI", () =>
     Effect.gen(function* () {
       const client = yield* Redis.Redis;
       const [key1, key2] = yield* Effect.all([generateKey, generateKey]);

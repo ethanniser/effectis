@@ -19,9 +19,7 @@ log and flush peristence
 
 ## NEW TODO
 
-- [ ] Get working with `redis-cli` / `npm:redis`
-  - [ ] implement `COMMAND DOCS`
-  - [ ] implement `CLIENT SETINFO`
+- [x] Get working with `redis-cli` / `npm:redis`
 - [x] implement pub/sub
 - [x] implement transactions
 - [x] implement persistence (these dont have to be redis compatible for now)
