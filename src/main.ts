@@ -377,7 +377,7 @@ const handleServerCommand = (
   Effect.gen(function* () {
     switch (input._tag) {
       case "QUIT":
-        return Stream.dieMessage("QUIT command received");
+        return Stream.empty;
       case "PING":
         return Stream.make(new RESP.SimpleString({ value: "PONG" }));
       case "ECHO":
