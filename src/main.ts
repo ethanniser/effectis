@@ -18,16 +18,22 @@ import {
 } from "effect";
 import { type Command, CommandFromRESP, CommandTypes } from "./Command.js";
 import { RESP } from "./RESP.js";
-import { Storage } from "./Storage.js";
+import { Storage, StorageError } from "./Storage.js";
 import * as Tx from "./Transaction.js";
 import {
   currentlySubscribedChannelsFiberRef,
   PubSubDriver,
   PubSubMessage,
 } from "./PubSub.js";
+import { SocketError } from "@effect/platform/Socket";
+import { ParseError } from "effect/ParseResult";
 
-type RedisEffectError = unknown;
-type RedisServices = Storage | FileSystem.FileSystem | PubSubDriver;
+type RedisEffectError =
+  | SocketError
+  | StorageError
+  | ParseError
+  | Tx.TransactionError;
+type RedisServices = Storage | PubSubDriver;
 
 const defaultNonErrorUnknownResponse = new RESP.SimpleString({
   value: "Unknown command",
@@ -70,7 +76,6 @@ const handleConnection = Effect.fn("handleConnection")(
   Effect.scoped
 );
 
-// * probably need to move the pubsub stuff up here with some sequencing function- maybe stream.flatten?
 type State =
   | {
       isSubscribed: true;

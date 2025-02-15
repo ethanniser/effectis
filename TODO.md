@@ -24,7 +24,7 @@ log and flush peristence
   - [ ] implement `CLIENT SETINFO`
 - [x] implement pub/sub
 - [x] implement transactions
-- [ ] implement persistence (these dont have to be redis compatible for now)
+- [x] implement persistence (these dont have to be redis compatible for now)
   - [x] log persistence (untested)
   - [x] snapshot persistence (untested)
 - [ ] perf comparison
