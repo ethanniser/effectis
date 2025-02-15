@@ -11,11 +11,9 @@ import {
   Match,
   Option,
   pipe,
-  Predicate,
   Schema,
   Scope,
   Stream,
-  Array,
   Exit,
 } from "effect";
 import { type Command, CommandFromRESP, CommandTypes } from "./Command.js";
@@ -96,52 +94,61 @@ export const processRESP = (
         isSubscribed: false,
         scope: undefined,
       } as State,
-      (state, commandOption) =>
-        Effect.gen(function* () {
-          if (Option.isNone(commandOption)) {
-            return [
-              state,
-              Stream.make(new RESP.Error({ value: "Unknown command" })),
-            ] as const;
-          }
-          const command = commandOption.value;
-
-          if (state.isSubscribed) {
-            if (Schema.is(CommandTypes.PubSub)(command)) {
-              const [newState, result] = yield* handlePubSubCommand(
-                command,
-                state
-              );
-              return [newState, Option.some(result)];
-            } else {
-              return [state, Option.none()];
-            }
-          }
-
-          if (Schema.is(CommandTypes.PubSub)(command)) {
-            return yield* handlePubSubCommand(command, state);
-          } else if (Schema.is(CommandTypes.Execution)(command)) {
-            const result = handleExecutionCommand(command);
-            return [state, Option.some(result)];
-          } else if (Schema.is(CommandTypes.Server)(command)) {
-            const result = handleServerCommand(command);
-            return [state, Option.some(result)];
-          } else {
-            const result = handleStorageCommand(command);
-            return [state, Option.some(result)];
-          }
-        })
+      handleAccumEffect
     ),
     Stream.filter(Option.isSome),
     Stream.map((_) => _.value),
     Stream.flatten({ concurrency: 2 })
   );
 
+const handleAccumEffect = (
+  state: State,
+  commandOption: Option.Option<Command>
+): Effect.Effect<
+  readonly [
+    State,
+    Option.Option<Stream.Stream<RESP.Value, RedisEffectError, RedisServices>>
+  ],
+  RedisEffectError,
+  RedisServices
+> =>
+  Effect.gen(function* () {
+    if (Option.isNone(commandOption)) {
+      return [
+        state,
+        Option.some(Stream.make(new RESP.Error({ value: "Unknown command" }))),
+      ] as const;
+    }
+    const command = commandOption.value;
+
+    if (state.isSubscribed) {
+      if (Schema.is(CommandTypes.PubSub)(command)) {
+        return yield* handlePubSubCommand(command, state);
+      } else {
+        return [state, Option.none()];
+      }
+    }
+
+    if (Schema.is(CommandTypes.PubSub)(command)) {
+      return yield* handlePubSubCommand(command, state);
+    } else if (Schema.is(CommandTypes.Execution)(command)) {
+      const result = handleExecutionCommand(command);
+      return [state, Option.some(result)];
+    } else if (Schema.is(CommandTypes.Server)(command)) {
+      const result = handleServerCommand(command);
+      return [state, Option.some(result)];
+    } else {
+      const result = handleStorageCommand(command);
+      return [state, Option.some(result)];
+    }
+    throw new Error("Not implemented");
+  });
+
 const handlePubSubCommand = (
   command: CommandTypes.PubSub,
   state: State
 ): Effect.Effect<
-  [
+  readonly [
     State,
     Option.Option<Stream.Stream<RESP.Value, RedisEffectError, RedisServices>>
   ],
