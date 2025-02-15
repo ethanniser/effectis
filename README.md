@@ -29,3 +29,45 @@ To test the package:
 ```sh
 pnpm test
 ```
+
+### _Very_ Crude Benchmarks
+
+_Taken from remote vps (33ms ping), 2vCPU, 2GB RAM_
+
+Redis
+
+```
+redis-benchmark -t set,get, -n 1000 -q
+SET: 1585.54 requests per second, p50=31.103 msec
+GET: 1583.28 requests per second, p50=31.135 msec
+```
+
+Effectis (Node)
+
+```
+redis-benchmark -t set,get, -n 1000 -q
+SET: 238.21 requests per second, p50=144.895 msec
+GET: 315.76 requests per second, p50=107.199 msec
+```
+
+Effectis (Bun)
+
+```
+redis-benchmark -t set,get, -n 1000 -q
+SET: 245.70 requests per second, p50=125.247 msec
+GET: 357.78 requests per second, p50=87.103 msec
+```
+
+[Bare minimum node implementation](https://github.com/ashwaniYDV/redis-server-clone-js)
+
+- Only 120 lines of code (effectis is 3000)
+- only supports get and set
+- no pub/sub
+- no persistence
+- no transactions
+
+```
+redis-benchmark -t set,get, -n 1000 -q
+SET: 1470.59 requests per second, p50=30.975 msec
+GET: 1479.29 requests per second, p50=31.023 msec
+```
