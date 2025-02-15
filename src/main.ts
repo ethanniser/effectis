@@ -39,15 +39,16 @@ const defaultNonErrorUnknownResponse = new RESP.SimpleString({
   value: "Unknown command",
 });
 
-export const main = Effect.gen(function* () {
-  const server = yield* SocketServer.SocketServer;
-  yield* Effect.logInfo(
-    `Server started on port: ${
-      server.address._tag === "TcpAddress" ? server.address.port : "unknown"
-    }`
-  );
-  yield* server.run(handleConnection);
-}).pipe(
+export const main = Effect.fn("main")(
+  function* () {
+    const server = yield* SocketServer.SocketServer;
+    yield* Effect.logInfo(
+      `Server started on port: ${
+        server.address._tag === "TcpAddress" ? server.address.port : "unknown"
+      }`
+    );
+    yield* server.run(handleConnection);
+  },
   Effect.catchAll((e) => Effect.logError("Uncaught error", e)),
   Effect.catchAllDefect((e) => Effect.logFatal("Defect", e))
 );
@@ -86,10 +87,10 @@ type State =
       scope: undefined;
     };
 
-export const processRESP = (
+export function processRESP(
   input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
-  pipe(
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+  return pipe(
     input,
     parseCommands,
     Stream.tap((value) => Effect.logTrace("Parsed command: ", value)),
@@ -104,8 +105,9 @@ export const processRESP = (
     Stream.map((_) => _.value),
     Stream.flatten({ concurrency: 2 })
   );
+}
 
-const handleAccumEffect = (
+function handleAccumEffect(
   state: State,
   commandOption: Option.Option<Command>
 ): Effect.Effect<
@@ -115,8 +117,8 @@ const handleAccumEffect = (
   ],
   RedisEffectError,
   RedisServices
-> =>
-  Effect.gen(function* () {
+> {
+  return Effect.gen(function* () {
     if (Option.isNone(commandOption)) {
       return [
         state,
@@ -147,8 +149,8 @@ const handleAccumEffect = (
       return [state, Option.some(result)];
     }
   });
-
-const handlePubSubCommand = (
+}
+function handlePubSubCommand(
   command: CommandTypes.PubSub,
   state: State
 ): Effect.Effect<
@@ -158,8 +160,8 @@ const handlePubSubCommand = (
   ],
   RedisEffectError,
   RedisServices
-> =>
-  Effect.gen(function* () {
+> {
+  return Effect.gen(function* () {
     const pubSub = yield* PubSubDriver;
     switch (command._tag) {
       case "SUBSCRIBE": {
@@ -290,11 +292,12 @@ const handlePubSubCommand = (
       }
     }
   });
+}
 
-const decodeFromWireFormat = (
+function decodeFromWireFormat(
   input: Stream.Stream<Uint8Array, Socket.SocketError, RedisServices>
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
-  pipe(
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+  return pipe(
     input,
     Stream.decodeText(),
     Stream.flattenIterables, // basically turn into stream of individual characters (because our parser kinda sucks idk probably slow but works)
@@ -313,11 +316,12 @@ const decodeFromWireFormat = (
     ),
     Stream.filterMap(identity)
   );
+}
 
-const parseCommands = (
+function parseCommands(
   input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
-): Stream.Stream<Option.Option<Command>, RedisEffectError, RedisServices> =>
-  pipe(
+): Stream.Stream<Option.Option<Command>, RedisEffectError, RedisServices> {
+  return pipe(
     input,
     Stream.mapEffect((value) =>
       Schema.decode(CommandFromRESP)(value).pipe(
@@ -327,11 +331,12 @@ const parseCommands = (
       )
     )
   );
+}
 
-const handleStorageCommand = (
+function handleStorageCommand(
   input: CommandTypes.Storage
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
-  Effect.gen(function* () {
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+  return Effect.gen(function* () {
     if (yield* Tx.isRunningTransaction) {
       yield* Tx.appendToCurrentTransaction(input);
       return new RESP.SimpleString({ value: "QUEUED" });
@@ -341,11 +346,12 @@ const handleStorageCommand = (
       return result;
     }
   });
+}
 
-const handleExecutionCommand = (
+function handleExecutionCommand(
   input: CommandTypes.Execution
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
-  Effect.gen(function* () {
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+  return Effect.gen(function* () {
     switch (input._tag) {
       case "MULTI": {
         yield* Tx.startTransaction;
@@ -370,11 +376,12 @@ const handleExecutionCommand = (
       }
     }
   });
+}
 
-const handleServerCommand = (
+function handleServerCommand(
   input: CommandTypes.Server
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> =>
-  Effect.gen(function* () {
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+  return Effect.gen(function* () {
     switch (input._tag) {
       case "QUIT":
         return Stream.empty;
@@ -392,14 +399,16 @@ const handleServerCommand = (
         return Stream.make(new RESP.SimpleString({ value: "TODO" }));
     }
   }).pipe(Stream.unwrap);
+}
 
-const encodeToWireFormat = (
+function encodeToWireFormat(
   input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
-): Stream.Stream<Uint8Array, RedisEffectError, RedisServices> =>
-  pipe(
+): Stream.Stream<Uint8Array, RedisEffectError, RedisServices> {
+  return pipe(
     input,
     Stream.mapEffect((respValue) =>
       Schema.encode(RESP.ValueWireFormat)(respValue)
     ),
     Stream.encodeText
   );
+}
