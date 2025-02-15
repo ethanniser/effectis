@@ -135,7 +135,7 @@ export const processRESP = (
     Stream.filter(Option.isSome),
     Stream.map((_) => _.value),
     Stream.flatten({ concurrency: 2 })
-  ) as any;
+  );
 
 const handlePubSubCommand = (
   command: CommandTypes.PubSub,
@@ -243,7 +243,7 @@ const handlePubSubCommand = (
                 })
               )
             ),
-          ];
+          ] as const;
         }
       }
       case "PUBLISH": {
@@ -264,7 +264,7 @@ const handlePubSubCommand = (
         }
       }
     }
-  }) as any;
+  });
 
 const decodeFromWireFormat = (
   input: Stream.Stream<Uint8Array, Socket.SocketError, RedisServices>
