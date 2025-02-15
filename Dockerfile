@@ -4,13 +4,12 @@ WORKDIR /app
 
 COPY . .
 
-RUN npm install -g pnpm
+RUN npm install -g bun
 
-RUN pnpm install
+RUN bun install
 
-
-RUN pnpm build
+RUN bun build
 
 EXPOSE 6789
 
-CMD ["pnpm", "start"]
+CMD ["bun", "start"]
