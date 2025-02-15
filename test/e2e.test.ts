@@ -17,6 +17,7 @@ import {
 import * as Redis from "../src/client/index.js";
 import { main } from "../src/main.js";
 import * as STMBackedInMemory from "../src/Storage/STMBackedInMemory.js";
+import * as PubSub from "../src/PubSub.js";
 
 const mainLive = pipe(
   main,
@@ -31,7 +32,8 @@ const sharedServices = pipe(
     Layer.mergeAll(
       STMBackedInMemory.layer(),
       NodeSocketServer.layer({ port: 6379 }),
-      NodeContext.layer
+      NodeContext.layer,
+      PubSub.layer
     )
   )
   // Layer.provide(Layer.succeedContext(DefaultServices.liveServices))

@@ -5,22 +5,31 @@ import {
   Channel,
   Effect,
   Either,
+  FiberRef,
+  HashSet,
   identity,
   Match,
   Option,
   pipe,
+  Predicate,
   Schema,
   Scope,
   Stream,
+  Array,
+  Exit,
 } from "effect";
 import { type Command, CommandFromRESP, CommandTypes } from "./Command.js";
 import { RESP } from "./RESP.js";
 import { Storage } from "./Storage.js";
 import * as Tx from "./Transaction.js";
-import { PubSubDriver } from "./PubSub.js";
+import {
+  currentlySubscribedChannelsFiberRef,
+  PubSubDriver,
+  PubSubMessage,
+} from "./PubSub.js";
 
 type RedisEffectError = unknown;
-type RedisServices = Storage | FileSystem.FileSystem;
+type RedisServices = Storage | FileSystem.FileSystem | PubSubDriver;
 
 const defaultNonErrorUnknownResponse = new RESP.SimpleString({
   value: "Unknown command",
@@ -132,7 +141,10 @@ const handlePubSubCommand = (
   command: CommandTypes.PubSub,
   state: State
 ): Effect.Effect<
-  [State, Stream.Stream<RESP.Value, RedisEffectError, RedisServices>],
+  [
+    State,
+    Option.Option<Stream.Stream<RESP.Value, RedisEffectError, RedisServices>>
+  ],
   RedisEffectError,
   RedisServices
 > =>
@@ -141,11 +153,114 @@ const handlePubSubCommand = (
     switch (command._tag) {
       case "SUBSCRIBE": {
         if (state.isSubscribed) {
+          return [state, Option.none()] as const;
+        } else {
+          yield* FiberRef.set(
+            currentlySubscribedChannelsFiberRef,
+            HashSet.make(...command.channels)
+          );
+
+          const scope = yield* Scope.make();
+          const subscription = yield* pubSub
+            .subscribe(command.channels)
+            .pipe(Scope.extend(scope));
+
+          const messageStream = subscription.pipe(
+            Stream.map(
+              ({ channel, message }) =>
+                new RESP.Array({
+                  value: [
+                    new RESP.BulkString({ value: "message" }),
+                    new RESP.BulkString({ value: channel }),
+                    new RESP.BulkString({ value: message }),
+                  ],
+                })
+            )
+          );
+
+          return [
+            {
+              isSubscribed: true,
+              scope,
+            },
+            Option.some(
+              Stream.concat(
+                Stream.make(
+                  new RESP.Array({
+                    value: [
+                      new RESP.BulkString({ value: "subscribe" }),
+                      ...command.channels.map(
+                        (channel) => new RESP.BulkString({ value: channel })
+                      ),
+                      new RESP.Integer({ value: command.channels.length }),
+                    ],
+                  })
+                ),
+                messageStream
+              )
+            ),
+          ] as const;
+        }
+      }
+      case "UNSUBSCRIBE": {
+        if (!state.isSubscribed) {
           return [
             state,
-            Stream.make(new RESP.Error({ value: "Already subscribed" })),
-          ];
+            Option.some(
+              Stream.make(
+                new RESP.Error({
+                  value: "Tried to unsubscribe but was not subscribed",
+                })
+              )
+            ),
+          ] as const;
         } else {
+          const currentlySubscribedChannels = yield* FiberRef.updateAndGet(
+            currentlySubscribedChannelsFiberRef,
+            HashSet.filter((channel) => !command.channels.includes(channel))
+          );
+
+          // if no longer subscribed to any channels, close the scope (interupting the subscription stream)
+          if (HashSet.size(currentlySubscribedChannels) === 0) {
+            yield* Scope.close(state.scope, Exit.void);
+          }
+
+          return [
+            {
+              isSubscribed: false,
+              scope: undefined,
+            },
+            Option.some(
+              Stream.make(
+                new RESP.Array({
+                  value: [
+                    new RESP.BulkString({ value: "unsubscribe" }),
+                    ...command.channels.map(
+                      (channel) => new RESP.BulkString({ value: channel })
+                    ),
+                    new RESP.Integer({ value: command.channels.length }),
+                  ],
+                })
+              )
+            ),
+          ];
+        }
+      }
+      case "PUBLISH": {
+        if (state.isSubscribed) {
+          return [state, Option.none()] as const;
+        } else {
+          yield* pubSub.publish.offer(new PubSubMessage(command));
+          return [
+            state,
+            Option.some(
+              Stream.make(
+                new RESP.Integer({
+                  value: yield* pubSub.nSubscribers(command.channel),
+                })
+              )
+            ),
+          ] as const;
         }
       }
     }

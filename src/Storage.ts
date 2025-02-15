@@ -14,7 +14,7 @@ export class StorageError extends Schema.TaggedError<StorageError>(
 export interface StorageImpl {
   run(command: CommandTypes.Storage): Effect.Effect<RESP.Value, StorageError>;
   runTransaction(
-    commands: Array<CommandTypes.Storage>
+    commands: ReadonlyArray<CommandTypes.Storage>
   ): Effect.Effect<Array<RESP.Value>, StorageError>;
   generateSnapshot: Effect.Effect<Uint8Array, StorageError>;
   restoreFromSnapshot(snapshot: Uint8Array): Effect.Effect<void, StorageError>;
@@ -24,7 +24,7 @@ export class Storage extends Context.Tag("Storage")<Storage, StorageImpl>() {}
 
 export interface LogPersistenceImpl {
   drain: Queue.Enqueue<CommandTypes.StorageCommands.Effectful>;
-  load: Effect.Effect<Array<CommandTypes.StorageCommands.Effectful>>;
+  load: Effect.Effect<ReadonlyArray<CommandTypes.StorageCommands.Effectful>>;
 }
 
 export class LogPersistence extends Context.Tag("LogPersistence")<

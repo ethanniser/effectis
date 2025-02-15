@@ -6,10 +6,14 @@ import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as Effect from "effect/Effect";
 import { run } from "./Cli.js";
 import * as STMBackedInMemory from "./Storage/STMBackedInMemory.js";
+import { Layer } from "effect";
+import * as PubSub from "./PubSub.js";
 
-run(process.argv).pipe(
-  Effect.provide(STMBackedInMemory.layer()),
-  Effect.provide(NodeSocketServer.layer({ port: 6379 })),
-  Effect.provide(NodeContext.layer),
-  NodeRuntime.runMain()
+const AllServices = Layer.mergeAll(
+  STMBackedInMemory.layer(),
+  NodeSocketServer.layer({ port: 6379 }),
+  NodeContext.layer,
+  PubSub.layer
 );
+
+run(process.argv).pipe(Effect.provide(AllServices), NodeRuntime.runMain);
