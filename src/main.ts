@@ -1,5 +1,4 @@
 import * as SocketServer from "@effect/experimental/SocketServer";
-import type { FileSystem } from "@effect/platform";
 import { Socket } from "@effect/platform";
 import {
   Channel,
@@ -27,13 +26,15 @@ import {
 } from "./PubSub.js";
 import { SocketError } from "@effect/platform/Socket";
 import { ParseError } from "effect/ParseResult";
+import { decodeFromWireFormatFast, FastParserError } from "./Parser/index.js";
 
-type RedisEffectError =
+export type RedisEffectError =
   | SocketError
   | StorageError
   | ParseError
-  | Tx.TransactionError;
-type RedisServices = Storage | PubSubDriver;
+  | Tx.TransactionError
+  | FastParserError;
+export type RedisServices = Storage | PubSubDriver;
 
 const defaultNonErrorUnknownResponse = new RESP.SimpleString({
   value: "Unknown command",
@@ -64,7 +65,8 @@ const handleConnection = Effect.fn("handleConnection")(
 
     yield* pipe(
       rawInputStream,
-      decodeFromWireFormat,
+      // decodeFromWireFormat,
+      decodeFromWireFormatFast,
       Stream.tap((value) => Effect.logTrace("Received RESP: ", value)),
       processRESP,
       Stream.tap((value) => Effect.logTrace("Sending RESP: ", value)),
@@ -295,30 +297,6 @@ function handlePubSubCommand(
   });
 }
 
-function decodeFromWireFormat(
-  input: Stream.Stream<Uint8Array, Socket.SocketError, RedisServices>
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
-  return pipe(
-    input,
-    Stream.decodeText(),
-    Stream.flattenIterables, // basically turn into stream of individual characters (because our parser kinda sucks idk probably slow but works)
-    Stream.mapAccumEffect("", (buffer, nextChunk) =>
-      Effect.gen(function* () {
-        const newBuffer = buffer + nextChunk;
-        const parseResult = yield* Schema.decode(RESP.ValueWireFormat)(
-          newBuffer
-        ).pipe(Effect.either);
-        if (Either.isRight(parseResult)) {
-          return ["", Option.some(parseResult.right)];
-        } else {
-          return [newBuffer, Option.none()];
-        }
-      })
-    ),
-    Stream.filterMap(identity)
-  );
-}
-
 function parseCommands(
   input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
 ): Stream.Stream<Option.Option<Command>, RedisEffectError, RedisServices> {
@@ -416,5 +394,29 @@ function encodeToWireFormat(
       Schema.encode(RESP.ValueWireFormat)(respValue)
     ),
     Stream.encodeText
+  );
+}
+
+function decodeFromWireFormat(
+  input: Stream.Stream<Uint8Array, Socket.SocketError, RedisServices>
+): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+  return pipe(
+    input,
+    Stream.decodeText(),
+    Stream.flattenIterables, // basically turn into stream of individual characters (because our parser kinda sucks idk probably slow but works)
+    Stream.mapAccumEffect("", (buffer, nextChunk) =>
+      Effect.gen(function* () {
+        const newBuffer = buffer + nextChunk;
+        const parseResult = yield* Schema.decode(RESP.ValueWireFormat)(
+          newBuffer
+        ).pipe(Effect.either);
+        if (Either.isRight(parseResult)) {
+          return ["", Option.some(parseResult.right)];
+        } else {
+          return [newBuffer, Option.none()];
+        }
+      })
+    ),
+    Stream.filterMap(identity)
   );
 }
