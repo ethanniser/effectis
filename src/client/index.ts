@@ -21,7 +21,7 @@ export const layer = (options?: Parameters<typeof createClient>[0]) =>
           try: () => createClient(options).connect(),
           catch: (e) => new RedisError({ cause: e }),
         }),
-        (client) => Effect.promise(() => client.quit())
+        (client) => Effect.promise(() => client.disconnect())
       );
       return {
         use: (fn) =>
