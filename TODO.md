@@ -27,7 +27,7 @@ log and flush peristence
   - [x] snapshot persistence (untested)
 - [x] clean up error handling
 - [ ] fix tests (transactions and pubsub)
-- [ ] perf comparison
+- [x] perf comparison
 - [ ] build out CLI
 - [ ] implement remaining data structures / commands
   - [ ] string
