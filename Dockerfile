@@ -10,6 +10,6 @@ RUN bun install
 
 RUN bun run build
 
-EXPOSE 6789
+EXPOSE 6379
 
 CMD ["bun", "start"]
