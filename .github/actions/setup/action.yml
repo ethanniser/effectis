@@ -9,13 +9,10 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install pnpm
-      uses: pnpm/action-setup@v3
-    - name: Install node
-      uses: actions/setup-node@v4
+    - name: Install bun
+      uses: oven-sh/setup-bun@v2
       with:
-        cache: pnpm
-        node-version: ${{ inputs.node-version }}
+        bun-version: latest
     - name: Install dependencies
       shell: bash
-      run: pnpm install
+      run: bun install
