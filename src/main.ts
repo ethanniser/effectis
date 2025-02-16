@@ -25,7 +25,7 @@ import {
 } from "./PubSub.js";
 import { SocketError } from "@effect/platform/Socket";
 import { ParseError } from "effect/ParseResult";
-import { FastParserError } from "./Parser/index.js";
+import { decodeFromWireFormatFast, FastParserError } from "./Parser/index.js";
 
 export type RedisEffectError =
   | SocketError
@@ -64,8 +64,8 @@ const handleConnection = Effect.fn("handleConnection")(
 
     yield* pipe(
       rawInputStream,
-      decodeFromWireFormat,
-      // decodeFromWireFormatFast,
+      // decodeFromWireFormat,
+      decodeFromWireFormatFast,
       Stream.tap((value) => Effect.logTrace("Received RESP: ", value)),
       processRESP,
       Stream.tap((value) => Effect.logTrace("Sending RESP: ", value)),

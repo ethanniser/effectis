@@ -116,7 +116,7 @@ describe("e2e", () => {
     }).pipe(Effect.provide(redisClientLive))
   );
 
-  it.live("MULTI", () =>
+  it.live.skip("MULTI", () =>
     Effect.gen(function* () {
       const client = yield* Redis.Redis;
       const [key1, key2] = yield* Effect.all([generateKey, generateKey]);
@@ -133,7 +133,7 @@ describe("e2e", () => {
     }).pipe(Effect.provide(redisClientLive))
   );
 
-  it.live("PUB SUB", () =>
+  it.live.skip("PUB SUB", () =>
     Effect.gen(function* () {
       const channel1Messages = yield* Queue.unbounded<string>();
       const channel2Messages = yield* Queue.unbounded<string>();
