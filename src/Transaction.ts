@@ -1,13 +1,4 @@
-import {
-  Chunk,
-  Data,
-  Effect,
-  FiberRef,
-  Option,
-  Ref,
-  Layer,
-  Context,
-} from "effect";
+import { Chunk, Data, Effect, Option, Ref, Layer, Context } from "effect";
 import type { CommandTypes } from "./Command.js";
 import { Storage, StorageError } from "./Storage.js";
 import { RESP } from "./RESP.js";

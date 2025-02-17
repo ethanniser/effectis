@@ -1,6 +1,5 @@
 import { Duration, Effect, ParseResult, pipe, Schema, Option } from "effect";
 import { RESP } from "./RESP.js";
-import { scan } from "effect/Iterable";
 
 // commands schould be serializable for WAL purposes
 // some way to distinguish write vs read commands (only write commands should be replayed)

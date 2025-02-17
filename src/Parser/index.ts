@@ -2,16 +2,7 @@ import type { RedisEffectError, RedisServices } from "../main.js";
 import { RESP } from "../RESP.js";
 import { Socket } from "@effect/platform";
 import { NodeStream } from "@effect/platform-node";
-import {
-  Data,
-  Effect,
-  Either,
-  identity,
-  Option,
-  pipe,
-  Schema,
-  Stream,
-} from "effect";
+import { Data, pipe, Stream } from "effect";
 import { Duplex, DuplexOptions } from "node:stream";
 import RedisParser from "redis-parser";
 
