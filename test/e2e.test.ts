@@ -9,7 +9,7 @@ import * as PubSub from "../src/PubSub.js";
 
 const mainLive = pipe(
   main,
-  Effect.provide(Logger.minimumLogLevel(LogLevel.All)), // change this for debugging
+  Effect.provide(Logger.minimumLogLevel(LogLevel.None)), // change this for debugging
   Effect.forkScoped,
   Layer.scopedDiscard
 );
@@ -116,7 +116,7 @@ describe("e2e", () => {
     }).pipe(Effect.provide(redisClientLive))
   );
 
-  it.live.only("MULTI", () =>
+  it.live("MULTI", () =>
     Effect.gen(function* () {
       const client = yield* Redis.Redis;
       const [key1, key2] = yield* Effect.all([generateKey, generateKey]);
@@ -150,7 +150,6 @@ describe("e2e", () => {
           // subscribe to 2 channels
           yield* client.use((client) =>
             client.subscribe(["one", "two"], (message, channel) => {
-              console.log("message", message, "channel", channel);
               if (channel === "one") {
                 channel1Messages.unsafeOffer(message);
               } else if (channel === "two") {
