@@ -192,7 +192,7 @@ function handlePubSubCommand(
                 })
             )
           );
-
+          let commandsSubscribedTo = 0;
           return [
             {
               isSubscribed: true,
@@ -201,15 +201,16 @@ function handlePubSubCommand(
             Option.some(
               Stream.concat(
                 Stream.make(
-                  new RESP.Array({
-                    value: [
-                      new RESP.BulkString({ value: "subscribe" }),
-                      ...command.channels.map(
-                        (channel) => new RESP.BulkString({ value: channel })
-                      ),
-                      new RESP.Integer({ value: command.channels.length }),
-                    ],
-                  })
+                  ...command.channels.map(
+                    (channel) =>
+                      new RESP.Array({
+                        value: [
+                          new RESP.BulkString({ value: "subscribe" }),
+                          new RESP.BulkString({ value: channel }),
+                          new RESP.Integer({ value: commandsSubscribedTo++ }),
+                        ],
+                      })
+                  )
                 ),
                 messageStream
               )
