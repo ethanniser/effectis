@@ -13,11 +13,11 @@ import {
   Scope,
   Stream,
   Exit,
+  Layer,
 } from "effect";
 import { type Command, CommandFromRESP, CommandTypes } from "./Command.js";
 import { RESP } from "./RESP.js";
 import { Storage, StorageError } from "./Storage.js";
-import * as Tx from "./Transaction.js";
 import {
   currentlySubscribedChannelsFiberRef,
   PubSubDriver,
@@ -26,14 +26,16 @@ import {
 import { SocketError } from "@effect/platform/Socket";
 import { ParseError } from "effect/ParseResult";
 import { decodeFromWireFormatFast, FastParserError } from "./Parser/index.js";
+import { TransactionDriver, TransactionError } from "./Transaction.js";
+import * as Tx from "./Transaction.js";
 
 export type RedisEffectError =
   | SocketError
   | StorageError
   | ParseError
-  | Tx.TransactionError
+  | TransactionError
   | FastParserError;
-export type RedisServices = Storage | PubSubDriver;
+export type RedisServices = Storage | PubSubDriver | TransactionDriver;
 
 const defaultNonErrorUnknownResponse = new RESP.SimpleString({
   value: "Unknown command",
@@ -74,6 +76,7 @@ const handleConnection = Effect.fn("handleConnection")(
     );
   },
   Effect.onExit(() => Effect.logInfo("Connection closed")),
+  Effect.provide(Layer.fresh(Tx.layer)),
   Effect.scoped
 );
 
@@ -316,6 +319,7 @@ function handleStorageCommand(
   input: CommandTypes.Storage
 ): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
   return Effect.gen(function* () {
+    const Tx = yield* TransactionDriver;
     if (yield* Tx.isRunningTransaction) {
       yield* Tx.appendToCurrentTransaction(input);
       return new RESP.SimpleString({ value: "QUEUED" });
@@ -331,6 +335,7 @@ function handleExecutionCommand(
   input: CommandTypes.Execution
 ): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
   return Effect.gen(function* () {
+    const Tx = yield* TransactionDriver;
     yield* Effect.logInfo(
       "Handling execution command: ",
       yield* Tx.isRunningTransaction,
