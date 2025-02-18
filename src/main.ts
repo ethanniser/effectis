@@ -29,7 +29,7 @@ import { decodeFromWireFormatFast, FastParserError } from "./Parser/index.js";
 import { TransactionDriver, TransactionError } from "./Transaction.js";
 import * as Tx from "./Transaction.js";
 
-export type RedisEffectError =
+export type RedisError =
   | SocketError
   | StorageError
   | ParseError
@@ -91,8 +91,8 @@ type State =
     };
 
 export function processRESP(
-  input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+  input: Stream.Stream<RESP.Value, RedisError, RedisServices>
+): Stream.Stream<RESP.Value, RedisError, RedisServices> {
   return pipe(
     input,
     parseCommands,
@@ -116,9 +116,9 @@ function handleAccumEffect(
 ): Effect.Effect<
   readonly [
     State,
-    Option.Option<Stream.Stream<RESP.Value, RedisEffectError, RedisServices>>
+    Option.Option<Stream.Stream<RESP.Value, RedisError, RedisServices>>
   ],
-  RedisEffectError,
+  RedisError,
   RedisServices
 > {
   return Effect.gen(function* () {
@@ -161,9 +161,9 @@ function handlePubSubCommand(
 ): Effect.Effect<
   readonly [
     State,
-    Option.Option<Stream.Stream<RESP.Value, RedisEffectError, RedisServices>>
+    Option.Option<Stream.Stream<RESP.Value, RedisError, RedisServices>>
   ],
-  RedisEffectError,
+  RedisError,
   RedisServices
 > {
   return Effect.gen(function* () {
@@ -301,8 +301,8 @@ function handlePubSubCommand(
 }
 
 function parseCommands(
-  input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
-): Stream.Stream<Option.Option<Command>, RedisEffectError, RedisServices> {
+  input: Stream.Stream<RESP.Value, RedisError, RedisServices>
+): Stream.Stream<Option.Option<Command>, RedisError, RedisServices> {
   return pipe(
     input,
     Stream.mapEffect((value) =>
@@ -317,7 +317,7 @@ function parseCommands(
 
 function handleStorageCommand(
   input: CommandTypes.Storage
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+): Stream.Stream<RESP.Value, RedisError, RedisServices> {
   return Effect.gen(function* () {
     const Tx = yield* TransactionDriver;
     if (yield* Tx.isRunningTransaction) {
@@ -333,7 +333,7 @@ function handleStorageCommand(
 
 function handleExecutionCommand(
   input: CommandTypes.Execution
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+): Stream.Stream<RESP.Value, RedisError, RedisServices> {
   return Effect.gen(function* () {
     const Tx = yield* TransactionDriver;
     yield* Effect.logInfo(
@@ -369,7 +369,7 @@ function handleExecutionCommand(
 
 function handleServerCommand(
   input: CommandTypes.Server
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+): Stream.Stream<RESP.Value, RedisError, RedisServices> {
   return Effect.gen(function* () {
     switch (input._tag) {
       case "QUIT":
@@ -391,8 +391,8 @@ function handleServerCommand(
 }
 
 function encodeToWireFormat(
-  input: Stream.Stream<RESP.Value, RedisEffectError, RedisServices>
-): Stream.Stream<Uint8Array, RedisEffectError, RedisServices> {
+  input: Stream.Stream<RESP.Value, RedisError, RedisServices>
+): Stream.Stream<Uint8Array, RedisError, RedisServices> {
   return pipe(
     input,
     Stream.mapEffect((respValue) =>
@@ -404,7 +404,7 @@ function encodeToWireFormat(
 
 function decodeFromWireFormat(
   input: Stream.Stream<Uint8Array, Socket.SocketError, RedisServices>
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+): Stream.Stream<RESP.Value, RedisError, RedisServices> {
   return pipe(
     input,
     Stream.decodeText(),

@@ -1,4 +1,4 @@
-import type { RedisEffectError, RedisServices } from "../main.js";
+import type { RedisError, RedisServices } from "../main.js";
 import { RESP } from "../RESP.js";
 import { Socket } from "@effect/platform";
 import { NodeStream } from "@effect/platform-node";
@@ -89,17 +89,12 @@ function toRESP(value: RedisParserOutput): RESP.Value {
 
 export function decodeFromWireFormatFast(
   input: Stream.Stream<Uint8Array, Socket.SocketError, RedisServices>
-): Stream.Stream<RESP.Value, RedisEffectError, RedisServices> {
+): Stream.Stream<RESP.Value, RedisError, RedisServices> {
   return pipe(
     input,
     Stream.map((bytes) => Buffer.copyBytesFrom(bytes)),
     Stream.pipeThroughChannel(
-      NodeStream.fromDuplex<
-        RedisEffectError,
-        RedisEffectError,
-        Buffer,
-        RedisParserOutput
-      >(
+      NodeStream.fromDuplex<RedisError, RedisError, Buffer, RedisParserOutput>(
         () => new RedisParserStream(),
         (e) => new FastParserError({ cause: e })
       )
