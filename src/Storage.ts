@@ -49,6 +49,7 @@ export const LogToAppendOnlyFileLive = (
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const file = yield* fs.open(fileName, { flag: "a" });
+      const stat = yield* file.stat;
       const queue =
         yield* Queue.unbounded<CommandTypes.StorageCommands.Effectful>();
 

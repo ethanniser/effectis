@@ -336,11 +336,6 @@ function handleExecutionCommand(
 ): Stream.Stream<RESP.Value, RedisError, RedisServices> {
   return Effect.gen(function* () {
     const Tx = yield* TransactionDriver;
-    yield* Effect.logInfo(
-      "Handling execution command: ",
-      yield* Tx.isRunningTransaction,
-      input
-    );
     switch (input._tag) {
       case "MULTI": {
         yield* Tx.startTransaction;
