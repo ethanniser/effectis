@@ -9,6 +9,7 @@ import {
   HashSet,
   Layer,
   Option,
+  Schedule,
   Stream,
 } from "effect";
 import * as SocketServer from "@effect/experimental/SocketServer";
@@ -128,7 +129,7 @@ function decodeFromWireFormat(
   return pipe(
     input,
     Stream.decodeText(),
-    Stream.flattenIterables, // basically turn into stream of individual characters (because our parser kinda sucks idk probably slow but works)
+    Stream.flattenIterables,
     Stream.mapAccumEffect("", (buffer, nextChunk) =>
       Effect.gen(function* () {
         const newBuffer = buffer + nextChunk;
@@ -519,6 +520,12 @@ function handleCommand(
   );
 }
 
+declare function handleExecutionCommand(
+  input: CommandTypes.Execution
+): Stream.Stream<RESP.Value, RedisError, RedisServices>;
+
+//
+
 function handleExecutionCommand(
   input: CommandTypes.Execution
 ): Stream.Stream<RESP.Value, RedisError, RedisServices> {
@@ -543,12 +550,29 @@ function handleExecutionCommand(
 
 //
 
+const handleConnection = (socket: Socket.Socket) =>
+  Effect.gen(function* () {
+    yield* Effect.logInfo("New connection");
+    const channel = Socket.toChannel<never>(socket);
+
+    const rawInputStream = Stream.never.pipe(
+      Stream.pipeThroughChannel(channel)
+    );
+    const rawOutputSink = Channel.toSink(channel);
+
+    yield* rawInputStream.pipe(processStream, Stream.run(rawOutputSink));
+  }).pipe(
+    Effect.provide(Layer.fresh(TransactionDriver.layer)),
+    Effect.onExit(() => Effect.logInfo("Connection closed"))
+  );
+
+//
+
 interface PubSubDriverImpl {
   subscribe: (
     channels: ReadonlyArray<string>
   ) => Effect.Effect<Stream.Stream<PubSubMessage>, never, Scope.Scope>;
   publish: Queue.Enqueue<PubSubMessage>;
-  nSubscribers: (channel: string) => Effect.Effect<number>;
 }
 
 export class PubSubDriver extends Context.Tag("PubSubDriver")<
@@ -599,8 +623,8 @@ function handlePubSubCommand(
 //
 
 export interface LogPersistenceImpl {
-  drain: Queue.Enqueue<CommandTypes.StorageCommands.Effectful>;
-  load: Effect.Effect<ReadonlyArray<CommandTypes.StorageCommands.Effectful>>;
+  drain: Queue.Enqueue<Command>;
+  load: Effect.Effect<ReadonlyArray<Command>>;
 }
 
 export class LogPersistence extends Context.Tag("LogPersistence")<
@@ -690,7 +714,12 @@ export const withLogPersistence = Layer.effect(
 //
 
 main.pipe(
-  withLogPersistence.pipe(Layer.provide(LogToAppendOnlyFileLive("log.aof")))
+  Effect.provide(
+    withLogPersistence.pipe(
+      Layer.provide(LogToAppendOnlyFileLive("log.aof")),
+      Layer.provide(STMBackedInMemoryStore.layer)
+    )
+  )
 );
 
 //
@@ -760,7 +789,23 @@ export const withSnapshotPersistence = (schedule: Schedule.Schedule<unknown>) =>
 
 //
 
+main.pipe(
+  Effect.provide(
+    Layer.merge(
+      withLogPersistence,
+      withSnapshotPersistence(Schedule.fixed("5 minutes"))
+    ).pipe(
+      Layer.provide(LogToAppendOnlyFileLive("log.aof")),
+      Layer.provide(FileSnapshotPersistenceLive),
+      Layer.provide(STMBackedInMemoryStore.layer)
+    )
+  )
+);
+
+//
+
 import { Command, Options } from "@effect/cli";
+import { File } from "node:buffer";
 
 const logLevel = Options.text("logLevel").pipe(
   Options.withSchema(logLevelSchema),
@@ -773,7 +818,7 @@ const port = Options.integer("port").pipe(
 );
 
 const command = Command.make(
-  "redis-effect",
+  "effectis",
   { logLevel, port },
   ({ logLevel, port }) =>
     pipe(
@@ -790,8 +835,43 @@ const command = Command.make(
 );
 
 export const run = Command.run(command, {
-  name: "redis-effect",
+  name: "effectis",
   version: "0.0.0",
 });
 
 //
+
+const handleConnection: (
+  socket: Socket.Socket
+) => Effect.Effect<
+  void,
+  | ParseError
+  | StorageError
+  | Socket.SocketGenericError
+  | Socket.SocketCloseError
+  | TransactionError,
+  Storage | PubSubDriver
+>;
+
+//
+
+import { NodeStream } from "@effect/platform-node";
+import { Duplex } from "node:stream";
+import RedisParser from "redis-parser";
+
+class RedisParserStream extends Duplex {}
+
+export function decodeFromWireFormatFast(
+  input: Stream.Stream<Uint8Array, Socket.SocketError, RedisServices>
+): Stream.Stream<RESP.Value, RedisError, RedisServices> {
+  return pipe(
+    input,
+    Stream.map((bytes) => Buffer.copyBytesFrom(bytes)),
+    Stream.pipeThroughChannel(
+      NodeStream.fromDuplex<RedisError, RedisError, Buffer, RESP.Value>(
+        () => new RedisParserStream(),
+        (e) => new ParserError({ cause: e })
+      )
+    )
+  );
+}

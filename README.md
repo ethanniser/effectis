@@ -58,7 +58,7 @@ SET: 245.70 requests per second, p50=125.247 msec
 GET: 357.78 requests per second, p50=87.103 msec
 ```
 
-Effectis - Fast Parser (Node)
+Effectis - Fast Parser (Bun)
 
 ```
 redis-benchmark -p 1002 -t set,get, -n 5000 -q
