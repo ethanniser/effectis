@@ -56,16 +56,49 @@ const processStream = flow(
 
 //
 
-const input = "+OK\r\n-ERR\r\n";
-const output = [
-  {
-    _tag: "SimpleString",
-    value: "OK",
-  },
-  {
-    _tag: "Error",
-    value: "ERR",
-  },
-];
+const input = "*2\r\n+OK\r\n-ERR\r\n";
+const output = {
+  _tag: "Array",
+  value: [
+    {
+      _tag: "SimpleString",
+      value: "OK",
+    },
+    {
+      _tag: "Error",
+      value: "ERR",
+    },
+  ],
+};
 
 //
+
+const SimpleString = Schema.TaggedStruct("SimpleString", {
+  value: Schema.String,
+});
+
+// Schema<SimpleString, string>
+const RESPSimpleString = Schema.String.pipe(
+  Schema.startsWith("+"),
+  Schema.endsWith("\r\n"),
+  Schema.transform(Schema.String, {
+    decode: (s) => s.slice(1, -2),
+    encode: (s) => `+${s}\r\n`,
+  }),
+  Schema.transform(SimpleString, {
+    decode: (s) => SimpleString.make({ value: s }),
+    encode: (s) => s.value,
+  })
+);
+
+//
+
+export const RESPValue = Schema.Union(
+  RESPSimpleString,
+  RESPBulkString,
+  RESPError,
+  RESPInteger,
+  RESPArray
+);
+
+export type RESPValue = Schema.Schema.Type<typeof RESPValue>;
