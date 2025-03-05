@@ -26,6 +26,7 @@ const handleConnection = (socket: Socket.Socket) =>
 // channel ~= Channel<Uint8Array, Uint8Array | string | CloseEvent, SocketError>
 
 import * as NodeStream from "node:stream";
+import { Schema } from "effect";
 
 type Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env> =
   NodeStream.Duplex;
@@ -102,3 +103,217 @@ export const RESPValue = Schema.Union(
 );
 
 export type RESPValue = Schema.Schema.Type<typeof RESPValue>;
+
+//
+
+export interface StorageImpl {
+  run(command: Command): Effect.Effect<RESP.Value, StorageError>;
+}
+
+export class Storage extends Context.Tag("Storage")<Storage, StorageImpl>() {}
+
+type StoredValue = Data.TaggedEnum<{
+  String: { value: string; expiration: Option.Option<DateTime.DateTime> };
+  List: {
+    value: Chunk.Chunk<string>;
+    expiration: Option.Option<DateTime.DateTime>;
+  };
+  Hash: {
+    value: HashMap.HashMap<string, string>;
+    expiration: Option.Option<DateTime.DateTime>;
+  };
+  Set: {
+    value: HashSet.HashSet<string>;
+    expiration: Option.Option<DateTime.DateTime>;
+  };
+}>;
+
+type Store = HashMap.HashMap<string, StoredValue>;
+
+//
+
+const StoredValue = Schema.Union(
+  StoredString,
+  StoredList,
+  StoredHash,
+  StoredSet
+);
+type StoredValue = Schema.Schema.Type<typeof StoredValue>;
+
+const Store = Schema.HashMap({
+  key: Schema.String,
+  value: StoredValue,
+});
+
+const StoreSnapshot = Schema.transform(Schema.Uint8ArrayFromSelf, Store, {
+  encode,
+  decode,
+});
+
+//
+
+import { Option, DateTime } from "effect";
+
+function getFromStore(store: Store, key: string): Effect<Option<StoredValue>> {
+  return Effect.gen(function* () {
+    const now = yield* DateTime.now;
+    const value = HashMap.get(store, key);
+
+    if (Option.isSome(value) && Option.isSome(value.value.expiration)) {
+      const expiration = value.value.expiration.value;
+      if (DateTime.lessThan(expiration, now)) {
+        return Option.none();
+      } else {
+        return Option.some(value.value);
+      }
+    } else {
+      return value;
+    }
+  });
+}
+
+//
+
+export const layer = (options: { expiredPurgeInterval: Duration.Duration }) =>
+  Layer.scoped(
+    Storage,
+    Effect.gen(function* () {
+      const store = yield* StoreImpl.make;
+
+      yield* pipe(
+        purgeExpired(store),
+        Effect.repeat(Schedule.spaced(options.expiredPurgeInterval)),
+        Effect.forkScoped
+      );
+
+      return store;
+    })
+  );
+
+//
+
+type Store = HashMap.HashMap<string, StoredValue>;
+
+type Store = TRef.TRef<HashMap.HashMap<string, StoredValue>>;
+
+// before:
+
+function get(store: Store, key: string): Effect<Option<StoredValue>> {
+  return Effect.gen(function* () {
+    return HashMap.get(store, key);
+  });
+}
+
+// after:
+function get(store: Store, key: string): STM<Option<StoredValue>> {
+  return STM.gen(function* () {
+    return yield* TRef.get(store).pipe(STM.map(HashMap.get(key)));
+  });
+}
+
+function run(store: Store, command: Command): Effect<RESP.Value> {
+  return Effect.gen(function* () {
+    const stm = getSTM(store, command);
+    return yield* STM.commit(stm);
+  });
+}
+
+//
+
+function runTransaction(
+  store: Store,
+  commands: Array<Command>
+): Effect<Array<RESP.Value>> {
+  return Effect.gen(function* () {
+    const stms = commands.map((command) => getSTM(store, command));
+    const all = STM.all(stms);
+    return yield* STM.commit(all);
+  });
+}
+
+//
+
+interface TransactionDriverImpl {
+  isRunningTransaction: Effect<boolean>;
+  startTransaction: Effect<void>;
+  appendToCurrentTransaction: (command: Command) => Effect<void>;
+  abortCurrentTransaction: Effect<void>;
+  executeCurrentTransaction: Effect<Array<RESP.Value>, _, Storage>;
+}
+
+export class TransactionDriver extends Context.Tag("TransactionDriver")<
+  TransactionDriver,
+  TransactionDriverImpl
+>() {}
+
+export const layer = Layer.effect(
+  TransactionDriver,
+  Effect.gen(function* () {
+    const state = yield* Ref.make(
+      Option.none<Chunk.Chunk<CommandTypes.Storage>>()
+    );
+
+    // ...
+  })
+);
+
+//
+
+export class PubSubMessage extends Data.TaggedClass("PubSubMessage")<{
+  channel: string;
+  message: string;
+}> {}
+
+interface PubSubDriverImpl {
+  subscribe: (
+    channels: Array<string>
+  ) => Effect<Stream.Stream<PubSubMessage>, _, Scope.Scope>;
+  publish: Queue.Enqueue<PubSubMessage>;
+}
+
+export class PubSubDriver extends Context.Tag("PubSubDriver")<
+  PubSubDriver,
+  PubSubDriverImpl
+>() {}
+
+//
+
+export const layer = Layer.effect(
+  PubSubDriver,
+  Effect.gen(function* () {
+    const pubsub = yield* PubSub.unbounded<PubSubMessage>();
+
+    // ...
+  })
+);
+
+//
+
+import { Options, Command } from "@effect/cli";
+
+const logLevel = Options.text("logLevel").pipe(
+  Options.withSchema(logLevelSchema),
+  Options.withDefault("Info")
+);
+
+const port = Options.integer("port").pipe(
+  Options.withDefault(6379),
+  Options.withFallbackConfig(Config.integer("PORT"))
+);
+
+const command = Command.make(
+  "effectis",
+  { logLevel, port },
+  ({ logLevel, port }) =>
+    pipe(
+      main,
+      Logger.withMinimumLogLevel(LogLevel.fromLiteral(logLevel)),
+      Effect.provide(
+        Layer.mergeAll(
+          NodeSocketServer.layer({ port }),
+          STMBackedInMemory.layer(),
+          PubSub.layer
+        )
+      )
+    )
+);

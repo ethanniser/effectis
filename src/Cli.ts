@@ -21,7 +21,7 @@ const port = Options.integer("port").pipe(
 );
 
 const command = Command.make(
-  "redis-effect",
+  "effectis",
   { logLevel, port },
   ({ logLevel, port }) =>
     pipe(
@@ -38,6 +38,6 @@ const command = Command.make(
 );
 
 export const run = Command.run(command, {
-  name: "redis-effect",
+  name: "effectis",
   version: "0.0.0",
 });
