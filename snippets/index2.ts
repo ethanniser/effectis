@@ -112,23 +112,36 @@ export interface StorageImpl {
 
 export class Storage extends Context.Tag("Storage")<Storage, StorageImpl>() {}
 
+class InMemoryStore implements StorageImpl {
+  store: Store;
+  static make = Effect.gen(function* () {});
+  run(command: Command): Effect.Effect<RESP.Value, StorageError> {
+    // ...
+  }
+}
+
+const layer = Layer.effect(Storage, InMemoryStore.make);
+//
+
+type Store = HashMap<string, StoredValue>;
+
+import { Option, Chunk, DateTime, HashMap, HashSet } from "effect";
+
 type StoredValue = Data.TaggedEnum<{
-  String: { value: string; expiration: Option.Option<DateTime.DateTime> };
+  String: { value: string; expiration: Option<DateTime> };
   List: {
-    value: Chunk.Chunk<string>;
-    expiration: Option.Option<DateTime.DateTime>;
+    value: Chunk<string>;
+    expiration: Option<DateTime>;
   };
   Hash: {
-    value: HashMap.HashMap<string, string>;
-    expiration: Option.Option<DateTime.DateTime>;
+    value: HashMap<string, string>;
+    expiration: Option<DateTime>;
   };
   Set: {
-    value: HashSet.HashSet<string>;
-    expiration: Option.Option<DateTime.DateTime>;
+    value: HashSet<string>;
+    expiration: Option<DateTime>;
   };
 }>;
-
-type Store = HashMap.HashMap<string, StoredValue>;
 
 //
 
@@ -144,6 +157,7 @@ const Store = Schema.HashMap({
   key: Schema.String,
   value: StoredValue,
 });
+type Store = Schema.Schema.Type<typeof Store>;
 
 const StoreSnapshot = Schema.transform(Schema.Uint8ArrayFromSelf, Store, {
   encode,
@@ -192,11 +206,8 @@ export const layer = (options: { expiredPurgeInterval: Duration.Duration }) =>
 
 //
 
-type Store = HashMap.HashMap<string, StoredValue>;
-
-type Store = TRef.TRef<HashMap.HashMap<string, StoredValue>>;
-
 // before:
+type Store = HashMap.HashMap<string, StoredValue>;
 
 function get(store: Store, key: string): Effect<Option<StoredValue>> {
   return Effect.gen(function* () {
@@ -205,6 +216,8 @@ function get(store: Store, key: string): Effect<Option<StoredValue>> {
 }
 
 // after:
+type Store = TRef.TRef<HashMap.HashMap<string, StoredValue>>;
+
 function get(store: Store, key: string): STM<Option<StoredValue>> {
   return STM.gen(function* () {
     return yield* TRef.get(store).pipe(STM.map(HashMap.get(key)));
