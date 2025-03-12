@@ -206,6 +206,61 @@ export const layer = (options: { expiredPurgeInterval: Duration.Duration }) =>
 
 //
 
+interface StorageImpl {
+  // ...
+  generateSnapshot: Effect.Effect<Uint8Array, StorageError>;
+}
+
+interface SnapshotPersistenceImpl {
+  storeSnapshot: (snapshot: Uint8Array) => Effect.Effect<void>;
+}
+
+class SnapshotPersistence extends Context.Tag("SnapshotPersistence") {} // ...
+
+import { FileSystem } from "@effect/platform";
+
+const FileSnapshotPersistenceLive = Layer.effect(
+  SnapshotPersistence,
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    return {
+      storeSnapshot: (snapshot) =>
+        Effect.gen(function* () {
+          const file = yield* fs.open("dump.rdb", { flag: "w" });
+          yield* file.writeAll(snapshot);
+        }).pipe(Effect.scoped),
+    };
+  })
+);
+
+//
+
+// Layer<void, StorageError, Storage | SnapshotPersistence>
+const withSnapshotPersistence = (schedule: Schedule<unknown>) =>
+  Layer.scopedDiscard(
+    Effect.gen(function* () {
+      const storage = yield* Storage;
+      const snapshotPersistence = yield* SnapshotPersistence;
+
+      const takeAndStoreSnapshot = pipe(
+        storage.generateSnapshot,
+        Effect.flatMap((snapshot) =>
+          snapshotPersistence.storeSnapshot(snapshot)
+        )
+      );
+
+      yield* Effect.addFinalizer(() => takeAndStoreSnapshot);
+
+      yield* pipe(
+        takeAndStoreSnapshot,
+        Effect.repeat(schedule),
+        Effect.forkScoped
+      );
+    })
+  );
+
+//
+
 // before:
 type Store = HashMap.HashMap<string, StoredValue>;
 
