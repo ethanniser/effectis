@@ -76,7 +76,7 @@ const handleConnection = Effect.fn("handleConnection")(
     );
   },
   Effect.onExit(() => Effect.logInfo("Connection closed")),
-  Effect.provide(Layer.fresh(Tx.layer)),
+  Effect.provide(Layer.fresh(Tx.layer)), // I dont think layer.fresh is actually needed because layers arent memoized across `provide`s
   Effect.scoped
 );
 

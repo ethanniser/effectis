@@ -26,12 +26,16 @@ const handleConnection = (socket: Socket.Socket) =>
 // channel ~= Channel<Uint8Array, Uint8Array | string | CloseEvent, SocketError>
 
 import * as NodeStream from "node:stream";
-import { Schema } from "effect";
 
 type Channel<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env> =
   NodeStream.Duplex;
 type Stream<Out, Err, Env> = NodeStream.Readable;
 type Sink<Out, In, Leftover, Err, Env> = NodeStream.Writable;
+
+// web streams
+type Channel<O, I, OE, IE, OD, ID, R> = TransformStream<I, O>;
+type Stream<O, E, R> = ReadableStream<O>;
+type Sink<O, I, L, E, R> = WritableStream<I>;
 
 //
 
@@ -206,6 +210,23 @@ export const layer = (options: { expiredPurgeInterval: Duration.Duration }) =>
 
 //
 
+function GET(command: { key: string; expiration: Option<Duration> }) {
+  return Effect.gen(function* () {
+    const now = yield* DateTime.now;
+    const expiration = command.expiration.pipe(
+      Option.map((duration) => DateTime.addDuration(now, duration))
+    );
+
+    this.setStore(
+      command.key,
+      new Stored.String({ value: command.value, expiration })
+    );
+    return new RESP.SimpleString({ value: "OK" });
+  });
+}
+
+//
+
 interface StorageImpl {
   // ...
   generateSnapshot: Effect.Effect<Uint8Array, StorageError>;
@@ -358,6 +379,7 @@ export const layer = Layer.effect(
 //
 
 import { Options, Command } from "@effect/cli";
+import { effect } from "effect/Layer";
 
 const logLevel = Options.text("logLevel").pipe(
   Options.withSchema(logLevelSchema),
