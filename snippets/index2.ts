@@ -296,10 +296,10 @@ type Store = TRef.TRef<HashMap.HashMap<string, StoredValue>>;
 
 function get(store: Store, key: string): STM<Option<StoredValue>> {
   return STM.gen(function* () {
-    return yield* TRef.get(store).pipe(STM.map(HashMap.get(key)));
+    const s = yield* TRef.get(store);
+    return HashMap.get(s, key);
   });
 }
-
 function run(store: Store, command: Command): Effect<RESP.Value> {
   return Effect.gen(function* () {
     const stm = getSTM(store, command);
