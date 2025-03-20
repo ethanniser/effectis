@@ -1,72 +1,24 @@
-# Effect CLI Application Template
+# Effectis - A Reimplementation of Redis in [Effect](https://effect.website)
 
-This template provides a solid foundation for building scalable and maintainable command-line applications with Effect.
+This project was presented as part of a talk for Effect Days 2025.
 
-## Running Code
+## Benchmarks
 
-This template leverages [tsx](https://tsx.is) to allow execution of TypeScript files via NodeJS as if they were written in plain JavaScript.
+See `scripts/benchmark.ts` (a bit broken but you can see how to run yourself)
 
-To execute a file with `tsx`:
+Manually taken:
 
-```sh
-pnpm tsx ./path/to/the/file.ts
-```
-
-## Operations
-
-**Building**
-
-To build the package:
-
-```sh
-pnpm build
-```
-
-**Testing**
-
-To test the package:
-
-```sh
-pnpm test
-```
-
-### _Very_ Crude Benchmarks
-
-_Taken from remote vps (33ms ping), 2vCPU, 2GB RAM_
-
-Redis
+### Redis (Reference)
 
 ```
-redis-benchmark -t set,get, -n 1000 -q
-SET: 1585.54 requests per second, p50=31.103 msec
-GET: 1583.28 requests per second, p50=31.135 msec
+redis-benchmark -t set,get -n 5000 -q
+SET: 96153.84 requests per second, p50=0.423 msec
+GET: 217391.30 requests per second, p50=0.119 msec
 ```
 
-Effectis - Original Parser (Node)
+Average RPS: 156772.57
 
-```
-redis-benchmark -t set,get, -n 1000 -q
-SET: 238.21 requests per second, p50=144.895 msec
-GET: 315.76 requests per second, p50=107.199 msec
-```
-
-Effectis - Original Parser(Bun)
-
-```
-redis-benchmark -t set,get, -n 1000 -q
-SET: 245.70 requests per second, p50=125.247 msec
-GET: 357.78 requests per second, p50=87.103 msec
-```
-
-Effectis - Fast Parser (Bun)
-
-```
-redis-benchmark -p 1002 -t set,get, -n 5000 -q
-SET: 493.19 requests per second, p50=88.767 msec
-GET: 807.49 requests per second, p50=51.487 msec
-```
-
-[Bare minimum node implementation](https://github.com/ashwaniYDV/redis-server-clone-js)
+### [Bare minimum JS/Node implementation](https://github.com/ashwaniYDV/redis-server-clone-js)
 
 - Only 120 lines of code (effectis is 3000)
 - only supports get and set
@@ -75,7 +27,49 @@ GET: 807.49 requests per second, p50=51.487 msec
 - no transactions
 
 ```
-redis-benchmark -t set,get, -n 1000 -q
-SET: 1470.59 requests per second, p50=30.975 msec
-GET: 1479.29 requests per second, p50=31.023 msec
+redis-benchmark -t set,get -n 5000 -q -p 3000
+SET: 98039.22 requests per second, p50=0.407 msec
+GET: 172413.80 requests per second, p50=0.239 msec
 ```
+
+Average RPS: 135226.51
+
+### Effectis (node) (original parser)
+
+```
+redis-benchmark -t set,get -n 5000 -q
+SET: 1075.27 requests per second, p50=42.527 msec
+GET: 1452.64 requests per second, p50=32.143 msec
+```
+
+Average RPS: 1263.96
+
+### Effectis (bun) (original parser)
+
+```
+redis-benchmark -t set,get -n 5000 -q
+SET: 1529.05 requests per second, p50=32.127 msec
+GET: 1956.95 requests per second, p50=24.495 msec
+```
+
+Average RPS: 1743.00
+
+### Effectis (node) (improved parser)
+
+```
+redis-benchmark -t set,get -n 5000 -q
+SET: 2702.70 requests per second, p50=16.231 msec
+GET: 4397.54 requests per second, p50=10.495 msec
+```
+
+Average RPS: 3550.12
+
+### Effectis (bun) (improved parser)
+
+```
+redis-benchmark -t set,get -n 5000 -q
+SET: 3610.11 requests per second, p50=13.599 msec
+GET: 4366.81 requests per second, p50=10.415 msec
+```
+
+Average RPS: 3988.46

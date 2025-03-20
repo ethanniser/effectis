@@ -1,8 +1,8 @@
-start:
+start: build
     bun run dist/bin.cjs
 
 build:
-    tsup
+    bunx tsup
 
 clean:
     rm -rf dist
