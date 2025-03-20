@@ -2,8 +2,10 @@ import { runSimple } from "run-container";
 import { $ } from "bun";
 import chalk from "chalk";
 
-const benchmarkScript = "redis-benchmark -t set,get -n 50000 -q";
-const runBenchmarkCommand = () => $`redis-benchmark -t set,get -n 50000 -q`;
+const benchmarkScript = "redis-benchmark -t set,get -n 100 -q";
+const runBenchmarkCommand = () =>
+  $`redis-benchmark -t set,get -n 100 -q`.text();
+const runJitCommand = () => $`redis-benchmark -t set,get -n 100 -q`.quiet();
 
 async function main() {
   console.log("Starting Benchmark:");
@@ -151,7 +153,7 @@ async function runBenchmark(name: string): Promise<{
   console.log(`Starting ${name} Benchmark`);
 
   // warm jit
-  await $`redis-benchmark -t set,get -n 1000 -q`.quiet();
+  await runJitCommand();
   const output = await runBenchmarkCommand();
   console.log(output);
 

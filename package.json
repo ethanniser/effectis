@@ -50,6 +50,7 @@
     "@effect/platform-bun": "^0.52.2",
     "@types/bun": "^1.2.2",
     "@types/redis-parser": "^3.0.3",
+    "dockernode": "^0.1.0",
     "redis": "^4.7.0",
     "redis-parser": "^3.0.0",
     "run-container": "^2.0.12"
