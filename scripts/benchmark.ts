@@ -1,56 +1,15 @@
 import { runSimple } from "run-container";
 import { $ } from "bun";
 import chalk from "chalk";
-import Docker from "dockerode";
 
-const docker = new Docker(); // Initialize Docker client
-
-async function buildDockerImage(
-  contextPath: string,
-  tag: string
-): Promise<void> {
-  console.log(chalk.blue(`Building Docker image: ${tag}`));
-
-  try {
-    const stream = await docker.buildImage(
-      {
-        context: contextPath,
-        src: ["Dockerfile"],
-      },
-      { t: tag }
-    );
-
-    // Handle the build stream
-    await new Promise((resolve, reject) => {
-      docker.modem.followProgress(
-        stream,
-        (err: Error | null, result: any[]) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve(result);
-        },
-        (event: { stream?: string }) => {
-          if (event.stream) {
-            process.stdout.write(event.stream);
-          }
-        }
-      );
-    });
-
-    console.log(chalk.green(`Successfully built image: ${tag}`));
-  } catch (error) {
-    console.error(chalk.red(`Failed to build image ${tag}:`), error);
-    throw error;
-  }
-}
+const benchmarkScript = "redis-benchmark -t set,get -n 50000 -q";
 
 async function main() {
   console.log("Starting Benchmark:");
 
   // Build images first
   await $`docker build -t effectis-node:latest -f ./scripts/benchmark/effectis/node/Dockerfile .`;
+  await $`docker build -t effectis-bun:latest -f ./scripts/benchmark/effectis/bun/Dockerfile .`;
   await $`docker build -t barebonesjs:latest -f ./scripts/benchmark/barebonesjs/Dockerfile .`;
 
   console.log("Started Redis Container");
@@ -78,7 +37,9 @@ async function main() {
     },
   });
 
-  const { averageRPS: idk } = await runBenchmark("Effectis");
+  const { averageRPS: effectisNodeSlowRPS } = await runBenchmark(
+    "Effectis (node) (slow parser)"
+  );
 
   await effectisNodeSlow.stop();
   await effectisNodeSlow.remove();
@@ -91,10 +52,45 @@ async function main() {
     },
   });
 
-  const { averageRPS: idk2 } = await runBenchmark("Effectis");
+  const { averageRPS: effectisNodeFastRPS } = await runBenchmark(
+    "Effectis (node) (fast parser)"
+  );
 
   await effectisNodeFast.stop();
   await effectisNodeFast.remove();
+
+  console.log("Starting Effectis (bun) (slow parser) Container");
+  const effectisBunSlow = await runSimple({
+    image: "effectis-bun", // Use the built image
+    env: {
+      SLOW_PARSER: "1",
+    },
+    ports: {
+      "6379": "6379",
+    },
+  });
+
+  const { averageRPS: effectisBunSlowRPS } = await runBenchmark(
+    "Effectis (bun) (slow parser)"
+  );
+
+  await effectisBunSlow.stop();
+  await effectisBunSlow.remove();
+
+  console.log("Starting Effectis (bun) (fast parser) Container");
+  const effectisBunFast = await runSimple({
+    image: "effectis-bun", // Use the built image
+    ports: {
+      "6379": "6379",
+    },
+  });
+
+  const { averageRPS: effectisBunFastRPS } = await runBenchmark(
+    "Effectis (bun) (fast parser)"
+  );
+
+  await effectisBunFast.stop();
+  await effectisBunFast.remove();
 
   console.log("Starting BarebonesJS Container");
   const barebonesjs = await runSimple({
@@ -105,13 +101,44 @@ async function main() {
   });
   await barebonesjs.stop();
   await barebonesjs.remove();
+
+  console.log("REPORT");
+  console.log(`Benchmark command: \`${benchmarkScript}\``);
+  console.log(`Redis Average RPS: ${redisRPS} - Reference`);
+  console.log(
+    `Effectis (node) (slow parser) Average RPS: ${effectisNodeSlowRPS} - Percentage of Reference: ${(
+      (effectisNodeSlowRPS / redisRPS) *
+      100
+    ).toFixed(2)}%`
+  );
+  console.log(
+    `Effectis (node) (fast parser) Average RPS: ${effectisNodeFastRPS} - Percentage of Reference: ${(
+      (effectisNodeFastRPS / redisRPS) *
+      100
+    ).toFixed(2)}%`
+  );
+  console.log(
+    `Effectis (bun) (slow parser) Average RPS: ${effectisBunSlowRPS} - Percentage of Reference: ${(
+      (effectisBunSlowRPS / redisRPS) *
+      100
+    ).toFixed(2)}%`
+  );
+  console.log(
+    `Effectis (bun) (fast parser) Average RPS: ${effectisBunFastRPS} - Percentage of Reference: ${(
+      (effectisBunFastRPS / redisRPS) *
+      100
+    ).toFixed(2)}%`
+  );
 }
 
 async function runBenchmark(name: string): Promise<{
   averageRPS: number;
 }> {
   console.log(`Starting ${name} Benchmark`);
-  const output = await $`redis-benchmark -t set,get -n 1000 -q`.text();
+
+  // warm jit
+  await $`redis-benchmark -t set,get -n 1000 -q`.quiet();
+  const output = await $`${benchmarkScript}`.text();
   console.log(output);
 
   try {
