@@ -3,14 +3,15 @@ import { $ } from "bun";
 import chalk from "chalk";
 
 const benchmarkScript = "redis-benchmark -t set,get -n 50000 -q";
+const runBenchmarkCommand = () => $`redis-benchmark -t set,get -n 50000 -q`;
 
 async function main() {
   console.log("Starting Benchmark:");
 
   // Build images first
-  await $`docker build -t effectis-node:latest -f ./scripts/benchmark/effectis/node/Dockerfile .`;
-  await $`docker build -t effectis-bun:latest -f ./scripts/benchmark/effectis/bun/Dockerfile .`;
-  await $`docker build -t barebonesjs:latest -f ./scripts/benchmark/barebonesjs/Dockerfile .`;
+  //   await $`docker build -t effectis-node:latest -f ./scripts/benchmark/effectis/node/Dockerfile .`;
+  //   await $`docker build -t effectis-bun:latest -f ./scripts/benchmark/effectis/bun/Dockerfile .`;
+  //   await $`docker build -t barebonesjs:latest -f ./scripts/benchmark/barebonesjs/Dockerfile .`;
 
   console.log("Started Redis Container");
   const redis = await runSimple({
@@ -21,10 +22,12 @@ async function main() {
     },
   });
 
-  const { averageRPS: redisRPS } = await runBenchmark("Redis");
-
-  await redis.stop();
-  await redis.remove();
+  const { averageRPS: redisRPS } = await runBenchmark("Redis").finally(
+    async () => {
+      await redis.stop();
+      await redis.remove();
+    }
+  );
 
   console.log("Starting Effectis (node) (slow parser) Container");
   const effectisNodeSlow = await runSimple({
@@ -39,10 +42,10 @@ async function main() {
 
   const { averageRPS: effectisNodeSlowRPS } = await runBenchmark(
     "Effectis (node) (slow parser)"
-  );
-
-  await effectisNodeSlow.stop();
-  await effectisNodeSlow.remove();
+  ).finally(async () => {
+    await effectisNodeSlow.stop();
+    await effectisNodeSlow.remove();
+  });
 
   console.log("Starting Effectis (node) (fast parser) Container");
   const effectisNodeFast = await runSimple({
@@ -54,10 +57,10 @@ async function main() {
 
   const { averageRPS: effectisNodeFastRPS } = await runBenchmark(
     "Effectis (node) (fast parser)"
-  );
-
-  await effectisNodeFast.stop();
-  await effectisNodeFast.remove();
+  ).finally(async () => {
+    await effectisNodeFast.stop();
+    await effectisNodeFast.remove();
+  });
 
   console.log("Starting Effectis (bun) (slow parser) Container");
   const effectisBunSlow = await runSimple({
@@ -72,10 +75,10 @@ async function main() {
 
   const { averageRPS: effectisBunSlowRPS } = await runBenchmark(
     "Effectis (bun) (slow parser)"
-  );
-
-  await effectisBunSlow.stop();
-  await effectisBunSlow.remove();
+  ).finally(async () => {
+    await effectisBunSlow.stop();
+    await effectisBunSlow.remove();
+  });
 
   console.log("Starting Effectis (bun) (fast parser) Container");
   const effectisBunFast = await runSimple({
@@ -87,10 +90,10 @@ async function main() {
 
   const { averageRPS: effectisBunFastRPS } = await runBenchmark(
     "Effectis (bun) (fast parser)"
-  );
-
-  await effectisBunFast.stop();
-  await effectisBunFast.remove();
+  ).finally(async () => {
+    await effectisBunFast.stop();
+    await effectisBunFast.remove();
+  });
 
   console.log("Starting BarebonesJS Container");
   const barebonesjs = await runSimple({
@@ -99,8 +102,13 @@ async function main() {
       "3000": "6379",
     },
   });
-  await barebonesjs.stop();
-  await barebonesjs.remove();
+
+  const { averageRPS: barebonesJsRPS } = await runBenchmark(
+    "Effectis (bun) (fast parser)"
+  ).finally(async () => {
+    await barebonesjs.stop();
+    await barebonesjs.remove();
+  });
 
   console.log("REPORT");
   console.log(`Benchmark command: \`${benchmarkScript}\``);
@@ -129,6 +137,12 @@ async function main() {
       100
     ).toFixed(2)}%`
   );
+  console.log(
+    `BarebonesJS Average RPS: ${barebonesJsRPS} - Percentage of Reference: ${(
+      (barebonesJsRPS / redisRPS) *
+      100
+    ).toFixed(2)}%`
+  );
 }
 
 async function runBenchmark(name: string): Promise<{
@@ -138,7 +152,7 @@ async function runBenchmark(name: string): Promise<{
 
   // warm jit
   await $`redis-benchmark -t set,get -n 1000 -q`.quiet();
-  const output = await $`${benchmarkScript}`.text();
+  const output = await runBenchmarkCommand();
   console.log(output);
 
   try {
