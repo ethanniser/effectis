@@ -106,7 +106,7 @@ async function main() {
   });
 
   const { averageRPS: barebonesJsRPS } = await runBenchmark(
-    "Effectis (bun) (fast parser)"
+    "BarebonesJS"
   ).finally(async () => {
     await barebonesjs.stop();
     await barebonesjs.remove();
