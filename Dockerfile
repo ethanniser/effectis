@@ -6,7 +6,7 @@ COPY . .
 
 RUN bun install --frozen-lockfile
 
-RUN bun run build
+RUN bunx tsup
 
 EXPOSE 6379
 
