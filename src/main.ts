@@ -14,6 +14,7 @@ import {
   Stream,
   Exit,
   Layer,
+  Config,
 } from "effect";
 import { type Command, CommandFromRESP, CommandTypes } from "./Command.js";
 import { RESP } from "./RESP.js";
@@ -64,10 +65,17 @@ const handleConnection = Effect.fn("handleConnection")(
     );
     const rawOutputSink = Channel.toSink(channel);
 
+    const useSlowParser = yield* Config.string("SLOW_PARSER").pipe(
+      Config.option
+    );
+
+    const decodeFn = Option.isSome(useSlowParser)
+      ? decodeFromWireFormat
+      : decodeFromWireFormatFast;
+    console.log(JSON.stringify(useSlowParser, null, 2));
     yield* pipe(
       rawInputStream,
-      // decodeFromWireFormat,
-      decodeFromWireFormatFast,
+      decodeFn,
       Stream.tap((value) => Effect.logTrace("Received RESP: ", value)),
       processRESP,
       Stream.tap((value) => Effect.logTrace("Sending RESP: ", value)),

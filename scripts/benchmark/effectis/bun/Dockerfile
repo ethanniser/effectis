@@ -4,9 +4,9 @@ WORKDIR /app
 
 COPY . .
 
-RUN bun install --frozen-lockfile
+RUN bun install
 
-RUN bun run build
+RUN bunx tsup
 
 EXPOSE 6379
 

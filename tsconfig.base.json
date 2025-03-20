@@ -31,6 +31,7 @@
     "noImplicitThis": true,
     "noUncheckedIndexedAccess": false,
     "strictNullChecks": true,
+    "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "target": "ES2022",
     "module": "NodeNext",
