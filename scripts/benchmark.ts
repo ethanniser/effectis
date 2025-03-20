@@ -2,10 +2,10 @@ import { runSimple } from "run-container";
 import { $ } from "bun";
 import chalk from "chalk";
 
-const benchmarkScript = "redis-benchmark -t set,get -n 100 -q";
+const benchmarkScript = "redis-benchmark -t set,get -n 10000 -q";
 const runBenchmarkCommand = () =>
-  $`redis-benchmark -t set,get -n 100 -q`.text();
-const runJitCommand = () => $`redis-benchmark -t set,get -n 100 -q`.quiet();
+  $`redis-benchmark -t set,get -n 10000 -q`.text();
+const runJitCommand = () => $`redis-benchmark -t set,get -n 1000 -q`.quiet();
 
 async function main() {
   console.log("Starting Benchmark:");
@@ -165,8 +165,8 @@ async function runBenchmark(name: string): Promise<{
       throw new Error("Failed to find set and get lines");
     }
 
-    const setRPS = Number.parseInt(setLine.split(":")[1].trim());
-    const getRPS = Number.parseInt(getLine.split(":")[1].trim());
+    const setRPS = Number.parseFloat(setLine.split(":")[1].trim());
+    const getRPS = Number.parseFloat(getLine.split(":")[1].trim());
     return {
       averageRPS: (setRPS + getRPS) / 2,
     };
