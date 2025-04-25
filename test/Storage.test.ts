@@ -16,11 +16,13 @@ import { processRESP } from "../src/main.js";
 import { RESP } from "../src/RESP.js";
 import * as STMBackedInMemory from "../src/Storage/STMBackedInMemory.js";
 import * as PubSub from "../src/PubSub.js";
+import * as TransactionDriver from "../src/Transaction.js";
 
 const TestServices = Layer.mergeAll(
   STMBackedInMemory.layer(),
   NodeContext.layer,
-  PubSub.layer
+  PubSub.layer,
+  TransactionDriver.layer
 );
 
 const runInput = (input: RESP.Value) =>

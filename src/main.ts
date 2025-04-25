@@ -72,7 +72,7 @@ const handleConnection = Effect.fn("handleConnection")(
     const decodeFn = Option.isSome(useSlowParser)
       ? decodeFromWireFormat
       : decodeFromWireFormatFast;
-    console.log(JSON.stringify(useSlowParser, null, 2));
+
     yield* pipe(
       rawInputStream,
       decodeFn,
